@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QFileDialog
 )
 from handler.file_handler import FileHandler
 
@@ -14,11 +15,20 @@ class InsertSingleFileWindow(QWidget):
 
         self.setWindowTitle("Insert singular")
         self.setFixedSize(QSize(400, 300))
-        file_handler = FileHandler()
+        self.file_handler = FileHandler()
 
         layout = QVBoxLayout()
         self.label = QLabel("Another Window % d" % randint(0, 100))
         self.button = QPushButton("select file")
-        # self.button.clicked.connect(file_handler.select_file_from_explorer())
+        self.button.clicked.connect(self.open_explorer)
         layout.addWidget(self.label)
+        layout.addWidget(self.button)
         self.setLayout(layout)
+
+    def open_explorer(self):
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setNameFilter("General (*.png *.jpg *.jpeg *.webp *.pdf *.dwg)")
+
+        if dialog.exec():
+            self.file_handler.select_file_from_explorer(dialog.selectedFiles())
