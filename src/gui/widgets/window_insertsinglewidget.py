@@ -20,15 +20,17 @@ class InsertSingleFileWindow(QWidget):
         layout = QVBoxLayout()
         self.label = QLabel("Another Window % d" % randint(0, 100))
         self.button = QPushButton("select file")
-        self.button.clicked.connect(self.open_explorer)
+        self.button.clicked.connect(self.open_file_dialog)
         layout.addWidget(self.label)
         layout.addWidget(self.button)
         self.setLayout(layout)
 
-    def open_explorer(self):
+    def open_file_dialog(self):
         dialog = QFileDialog(self)
         dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         dialog.setNameFilter("General (*.png *.jpg *.jpeg *.webp *.pdf *.dwg)")
 
+        # "N:\049_Plas\2126030 Afstudeeropdracht automatisering info uit docs\12. Tek-Software\Examples\AOC\001.pdf"
+
         if dialog.exec():
-            self.file_handler.select_file_from_explorer(dialog.selectedFiles())
+            self.file_handler.select_file(dialog.selectedFiles())
