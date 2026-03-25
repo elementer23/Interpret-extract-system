@@ -16,3 +16,6 @@ class FileHandler(AbstractHandler):
 
     def select_multi_file(self, file_names):
         self.image_handler.pdf_to_image_PIL_multi_show(file_names)
+
+    def select_file_for_text_extraction(self, file_name):
+        self.image_handler.pdf_to_image_opencv_numpyarray(file_name[0])

@@ -25,4 +25,4 @@ if __name__ == "__main__":
     image_handler = ImageHandler()
     text_handler = TextHandler()
 
-    file_handler.set_next(image_handler).set_next(detection_handler).set_next(text_handler)
+    file_handler.set_next(image_handler).set_next(text_handler)

@@ -30,7 +30,5 @@ class InsertSingleFileWindow(QWidget):
         dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         dialog.setNameFilter("General (*.png *.jpg *.jpeg *.webp *.pdf *.dwg)")
 
-        # "N:\049_Plas\2126030 Afstudeeropdracht automatisering info uit docs\12. Tek-Software\Examples\AOC\001.pdf"
-
         if dialog.exec():
-            self.file_handler.select_file(dialog.selectedFiles())
+            self.file_handler.select_file_for_text_extraction(dialog.selectedFiles())

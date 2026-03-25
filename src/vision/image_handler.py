@@ -3,12 +3,13 @@ import numpy as np
 from PIL import Image
 import pymupdf
 from handler.abstract_handler import *
+from vision.text_handler import TextHandler
 
 
 class ImageHandler(AbstractHandler):
     def __init__(self):
         super().__init__()
-
+        self.text_handler = TextHandler()
     
     def handle(self, request: Any) -> Any:
         pass
@@ -29,9 +30,9 @@ class ImageHandler(AbstractHandler):
                 img = img.reshape(pix.height, pix.width, 3)
                 img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
 
+            self.text_handler.retrieve_text_from_image(img)
             return img
-        doc.close()
-        
+        doc.close()        
 
     def pdf_to_image_PIL_show(self, file):
         doc = pymupdf.open(file)
