@@ -7,10 +7,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QFileDialog
 )
-from handler.file_handler import FileHandler
-from vision.image_handler import ImageHandler
-from vision.text_handler import TextHandler
-from handler.pipeline import Pipeline
+from handler.main_handler import Handler
 
 class InsertBulkFileWindow(QWidget):
     def __init__(self):
@@ -50,14 +47,13 @@ class InsertBulkFileWindow(QWidget):
         if not self.add_button.isHidden():
             self.add_button.setHidden(True)
 
-            build_pipeline = Pipeline(FileHandler(), ImageHandler(), TextHandler())
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
 
             for file_path in self.file_path:
-                print(build_pipeline.run(build_pipeline.handler, file_path))
+                print(builder.run(builder.handler, file_path))
 
             self.label.setText("Select...")
             
-
     def file_name_list(self, file_list):
         list = []
 

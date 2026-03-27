@@ -6,10 +6,10 @@ from PyQt6.QtWidgets import (
     QWidget,
     QFileDialog
 )
+from handler.main_handler import Handler
 from handler.file_handler import FileHandler
 from vision.image_handler import ImageHandler
 from vision.text_handler import TextHandler
-from handler.pipeline import Pipeline
 
 class InsertSingleFileWindow(QWidget):
     def __init__(self):
@@ -49,12 +49,9 @@ class InsertSingleFileWindow(QWidget):
         if not self.add_button.isHidden():
             self.add_button.setHidden(True)
 
-            build_pipeline = Pipeline(
-                FileHandler(),
-                ImageHandler(),
-                TextHandler()
-            )
-
-            print(build_pipeline.run(build_pipeline.handler, self.file_path))
+            # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
+            # print(builder.run(builder.handler, self.file_path))
+            print(builder.run(builder.handler, self.file_path))
 
             self.label.setText("select...")

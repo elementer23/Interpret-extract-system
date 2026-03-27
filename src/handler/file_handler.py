@@ -1,12 +1,9 @@
-from vision.image_handler import ImageHandler
 import numpy as np
 import pymupdf
 
 class FileHandler():
     def __init__(self):
         super().__init__()
-
-        self.image_handler = ImageHandler()
 
     def process(self, file_path):
         doc = pymupdf.open(file_path)
@@ -24,12 +21,3 @@ class FileHandler():
 
             return np_buffer
         doc.close()        
-
-    
-
-    def select_file(self, file_name):
-        self.image_handler.pdf_to_image_PIL_show(file_name[0])
-
-    def select_multi_file(self, file_names):
-        for file in file_names:
-            self.image_handler.pdf_to_image_PIL_show(file)

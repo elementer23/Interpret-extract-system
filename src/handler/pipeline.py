@@ -4,7 +4,6 @@ class Pipeline():
         if args is not None:
             self.handler = args
 
-
     def run(self, class_handlers, data):
         if data is None:
             return
