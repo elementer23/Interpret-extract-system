@@ -6,19 +6,20 @@ class DetectionHandler():
 
 
     def process(self, image):
-        # model = YOLO('yolo26n.pt', task='detect')
-        model = YOLO("yolo26n-obb.pt")
+        model = YOLO("best.pt", task="obb")
         results = model(source=image)
-        # results = model(["image1.jpg", "image2.jpg"])  # return a list of Results objects
 
         relevant = []
 
         for result in results:
-            xywhr = result.obb.xywhr
+            xywhr = result.obb.xywhr  # center-x, center-y, width, height, angle (radians)
+            xyxyxyxy = result.obb.xyxyxyxy  # polygon format with 4-points
             names = [result.names[cls.item()] for cls in result.obb.cls.int()]  # class name of each box
             confs = result.obb.conf  # confidence score of each box
 
             relevant.append(xywhr)
+            relevant.append(xyxyxyxy)
             relevant.append(names)
             relevant.append(confs)
+            result.show()
         return relevant

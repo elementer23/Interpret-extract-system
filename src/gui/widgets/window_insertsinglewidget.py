@@ -49,9 +49,9 @@ class InsertSingleFileWindow(QWidget):
         if not self.add_button.isHidden():
             self.add_button.setHidden(True)
 
-            # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
-            # print(builder.run(builder.handler, self.file_path))
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
             print(builder.run(builder.handler, self.file_path))
+            # print(builder.run(builder.handler, self.file_path))
 
             self.label.setText("select...")

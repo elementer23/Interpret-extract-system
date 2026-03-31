@@ -208,3 +208,7 @@ __marimo__/
 
 # Ignore YOLO model weights
 *.pt
+
+# Ignore newly imported model
+models/my_model
+models/my_first_obb_model
