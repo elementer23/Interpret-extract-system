@@ -5,8 +5,8 @@ class FileHandler():
     def __init__(self):
         super().__init__()
 
-    def process(self, file_path):
-        doc = pymupdf.open(file_path)
+    def process(self, context):
+        doc = pymupdf.open(context.image)
         for page in doc:
             zoom = 300 / 72
             mat = pymupdf.Matrix(zoom, zoom)
@@ -19,5 +19,5 @@ class FileHandler():
             else:
                 np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
 
-            return np_buffer
+            context.image = np_buffer
         doc.close()        

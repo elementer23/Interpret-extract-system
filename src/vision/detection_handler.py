@@ -5,9 +5,9 @@ class DetectionHandler():
         super().__init__()
 
 
-    def process(self, image):
+    def process(self, context):
         model = YOLO("best.pt", task="obb")
-        results = model(source=image)
+        results = model(source=context.image)
 
         relevant = []
 

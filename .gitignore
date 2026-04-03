@@ -210,5 +210,5 @@ __marimo__/
 *.pt
 
 # Ignore newly imported model
-models/my_model
-models/my_first_obb_model
+data/my_model
+data/my_first_obb_model
