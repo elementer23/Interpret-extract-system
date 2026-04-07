@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QMenuBar, QStatusBar)
 from gui.widgets.dialog_insertsinglewidget import CustomDialog
 from gui.widgets.window_insertsinglewidget import InsertSingleFileWindow
 from gui.widgets.window_insertbulkwidget import InsertBulkFileWindow
+from gui.widgets.window_insertzipwidget import InsertZipFileWindow
 
 class CustomMenu(QMenuBar):
     def __init__(self, parent=None):
@@ -11,6 +12,7 @@ class CustomMenu(QMenuBar):
 
         self.insert_single_file_window = InsertSingleFileWindow()
         self.insert_bulk_file_window = InsertBulkFileWindow()
+        self.insert_zip_file_window = InsertZipFileWindow()
 
         insert_action = QAction("&new file", self)
         insert_action.setStatusTip("insert file")
@@ -22,11 +24,16 @@ class CustomMenu(QMenuBar):
         insert_bulk.setShortcut(QKeySequence("Ctrl+Shift+b"))
         insert_bulk.triggered.connect( lambda checked: self.open_insert_window(self.insert_bulk_file_window))
 
+        insert_zip = QAction("&add zip", self)
+        insert_zip.setStatusTip("insert files in zip")
+        insert_zip.setShortcut(QKeySequence("Ctrl+Shift+z"))
+        insert_zip.triggered.connect( lambda checked: self.open_insert_window(self.insert_zip_file_window))
+
         parent.setStatusBar(QStatusBar(self))
 
         file_menu = self.addMenu("&File")
         file_insertmenu = file_menu.addMenu("insert")
-        file_insertmenu.addActions([insert_action, insert_bulk])
+        file_insertmenu.addActions([insert_action, insert_bulk, insert_zip])
 
     def open_insert_window(self, window):
         if window.isVisible():

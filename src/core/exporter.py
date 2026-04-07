@@ -6,19 +6,21 @@ class Exporter():
 
     def export_to_excel(self, data_to_enter: list) -> None:
         wb = Workbook()
-        ws = wb.active
-        ws.title = "Extracted"
-        ws = wb["Extracted"]
 
-        headers = ["Type", "Text", "Left", "Top", "Width", "Height"]
-        ws.append(headers)
+        for i in range(len(data_to_enter)):
+            if i == 0:
+                ws = wb.active
+            else:
+                ws = wb.create_sheet()
 
-        for bbx in data_to_enter:
-            dt = bbx.area_domain()
+            headers = ["Type", "Text", "Left", "Top", "Width", "Height"]
+            ws.append(headers)
 
-            row = [dt['type'], dt['text'], dt['left'], dt['top'], dt['width'], dt['height']]
+            for bbx in data_to_enter[i]:
+                dt = bbx.area_domain()
 
-            ws.append(row)
+                row = [dt['type'], dt['text'], dt['left'], dt['top'], dt['width'], dt['height']]
 
+                ws.append(row)
 
         wb.save(r"C:/Users/697/Documents/output.xlsx")

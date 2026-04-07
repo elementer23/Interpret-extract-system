@@ -3,7 +3,7 @@ from vision.text_handler import TextHandler
 
 class PipeContext():
     def __init__(self, data):
-        self.image = data
+        self.image_s = data
         self.text_boxes = []
         self.yolo_data = {}
         self.text_handler_present = False

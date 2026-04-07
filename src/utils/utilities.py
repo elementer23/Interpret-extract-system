@@ -1,4 +1,6 @@
 import re
+import zipfile
+import warnings
 
 class BasicUtils(object):
 
@@ -30,3 +32,12 @@ class BasicUtils(object):
             return "symbool"
         else:
             return "tekst"
+        
+    @staticmethod
+    def is_zip_present(val: list) -> bool:
+        if not val:
+            return None
+        
+        for zip in val:
+            if zipfile.is_zipfile(zip):
+                return True

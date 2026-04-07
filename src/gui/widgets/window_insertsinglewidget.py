@@ -56,7 +56,7 @@ class InsertSingleFileWindow(QWidget):
 
         if dialog.exec():
             self.label.setText(QFileInfo(dialog.selectedFiles()[0]).fileName())
-            self.file_path = dialog.selectedFiles()[0]
+            self.file_path = dialog.selectedFiles()
             self.add_button.setHidden(False)
 
     def add_file(self):
@@ -66,7 +66,7 @@ class InsertSingleFileWindow(QWidget):
             # custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
             # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
-            self.context = builder.run(builder.handler, self.file_path)
+            self.context = builder.run(builder.handler, self.file_path[:])
             # test = custom.run(custom.handler, self.file_path)
             # cv.imshow("image", self.context.image)
             # cv.waitKey(0)
@@ -85,8 +85,8 @@ class InsertSingleFileWindow(QWidget):
             self.bound_box_button.setHidden(True)
 
             custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-            in_context = custom.run(custom.handler, self.file_path)
-            ImageHandler().draw_bounding_box(in_context.image, self.context.text_boxes)
+            in_context = custom.run(custom.handler, self.file_path[:])
+            ImageHandler().draw_bounding_box(in_context, self.context)
             # ImageHandler().draw_bounding_box(needed_image, DomainHandler().detection_box_list)
 
     def activate_export(self):
