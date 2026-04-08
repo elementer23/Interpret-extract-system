@@ -1,6 +1,9 @@
 import numpy as np
 import pymupdf
 import os
+import shutil
+from pathlib import Path
+from utils.utilities import BasicUtils
 
 class FileHandler():
     def __init__(self):
@@ -27,5 +30,31 @@ class FileHandler():
     def get_temp_files_dir(self):
         path = "C:/Users/697/Documents/temp_files"
         files = os.listdir(path)
+        file_context = []
 
-        return files
+        for file in files:
+            full_path = f"C:/Users/697/Documents/temp_files/{file}"
+            file_context.append({"file": file, "dir": full_path})
+
+        return file_context
+    
+    def copy_files(self, file_list: list):
+        if not BasicUtils.does_file_exist(file=None, file_list=file_list):
+            for file in file_list:
+                source_file = Path(file)
+                target_dir = Path("C:/Users/697/Documents/temp_files/")
+
+                shutil.copy2(source_file, target_dir)
+
+    def delete_file(self, file: str):
+        if BasicUtils.does_file_exist(file=file, file_list=None):
+            os.remove(file)
+        else:
+            print("Bestand bestaat niet")
+
+    def delete_files(self, file_list: list):
+        if BasicUtils.does_file_exist(file=None, file_list=file_list):
+            for f in file_list:
+                os.remove(f)
+        else:
+            print("Bestand(en) bestaat niet")

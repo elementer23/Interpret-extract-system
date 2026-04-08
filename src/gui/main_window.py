@@ -1,6 +1,25 @@
-from PyQt6.QtCore import QSize, Qt
-
-from PyQt6.QtWidgets import (QMainWindow, QVBoxLayout)
+from PyQt6.QtCore import QSize, Qt, QFileInfo, QFile, QDir
+from utils.utilities import BasicUtils
+import zipfile
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QHBoxLayout,
+    QGridLayout,
+    QWidget,
+    QFileDialog,
+    QCheckBox,
+    QMessageBox
+    )
+from handler.main_handler import Handler
+from handler.file_handler import FileHandler
+from vision.image_handler import ImageHandler
+from vision.text_handler import TextHandler
+import matplotlib.pyplot as plt
+from core.exporter import Exporter
 from gui.widgets.menu_menubarwidget import CustomMenu
 
 class MainWindow(QMainWindow):
@@ -8,9 +27,249 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("interpret & extract")
 
-        self.setMinimumSize(QSize(400, 300))
+        self.setMinimumSize(QSize(600, 500))
         self.setMaximumSize(QSize(1000, 900))
 
         self.setMenuBar(CustomMenu(self))
-    
+
+        self.file_path = []
+        self.context = ""
+        self.selected_files_list = []
+
+        main_widget = QWidget(self)
+        self.setCentralWidget(main_widget)
+
+        main_layout = QVBoxLayout()
+
+        grid_layout = QGridLayout()
+
+        self.label = QLabel("select...")
+
+        self.button = QPushButton("select file(s)")
+        self.button.clicked.connect(self.open_file_dialog)
+
+        self.add_button = QPushButton("add file(s)")
+        self.add_button.setHidden(True)
+        self.add_button.clicked.connect(self.add_files)
+
+        self.unzip_button = QPushButton("unzip content")
+        self.unzip_button.setHidden(True)
+        self.unzip_button.clicked.connect(self.unzip_zip)
+
+        self.update_list_button = QPushButton("update content")
+        self.update_list_button.clicked.connect(self.dir_content)
+
+        self.delete_selected_button = QPushButton("delete selected")
+        self.delete_selected_button.setEnabled(False)
+        self.delete_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.delete_selected_files(sfl))
+
+        self.export_selected_button = QPushButton("export selected")
+        self.export_selected_button.setEnabled(False)
+        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.export_selected_files(sfl))
+
+        grid_layout.addWidget(QLabel("File(s):"), 1, 0)
+        grid_layout.addWidget(self.label, 1, 1)
+        grid_layout.addWidget(self.button, 1, 2)
+        grid_layout.addWidget(self.add_button, 1, 3)
+        grid_layout.addWidget(self.unzip_button, 1, 3)
+        grid_layout.addWidget(self.update_list_button, 2, 0)
+        grid_layout.addWidget(self.delete_selected_button, 2, 2)
+        grid_layout.addWidget(self.export_selected_button, 2, 3)
+        main_layout.addLayout(grid_layout)
+
+        scroll_view = QScrollArea()
+        scroll_view.setWidgetResizable(True)
+
+        content_widget = QWidget()
+        self.content_layout = QVBoxLayout(content_widget)
+        self.content_layout.addStretch()
+        self.loaded_files = set()
+
+        scroll_view.setWidget(content_widget)
+        main_layout.addWidget(scroll_view)
         
+        main_widget.setLayout(main_layout)
+
+        self.dir_content()
+
+    def open_file_dialog(self):
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        dialog.setNameFilter("General (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)")
+
+        if dialog.exec():
+            self.label.setText(self.file_name_list(dialog.selectedFiles()))
+            self.file_path = dialog.selectedFiles()
+            if BasicUtils.is_zip_present(self.file_path[:]):
+                self.unzip_button.setHidden(False)
+                self.add_button.setHidden(True)
+            else:
+                self.unzip_button.setHidden(True)
+                self.add_button.setHidden(False)
+
+    def add_files(self):
+        if not self.add_button.isHidden():
+            self.add_button.setHidden(True)
+
+            FileHandler().copy_files(self.file_path[:])
+            # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+
+            # # for file_path in self.file_path:
+            # self.context = builder.run(builder.handler, self.file_path[:])
+
+            self.label.setText("Select...")
+            self.dir_content()
+
+    def unzip_zip(self):
+        if BasicUtils.is_zip_present(self.file_path[:]):
+            zf = zipfile.ZipFile(f"{self.file_path[0]}", "r")
+            try:
+                zf.extractall(path="C:/Users/697/Documents/temp_files", pwd=None)
+            except:
+                print('Error')
+                pass
+            zf.close()
+            self.dir_content()
+            self.unzip_button.setHidden(True)
+            self.label.setText("Select...")
+
+    def dir_content(self):
+        all_files = FileHandler().get_temp_files_dir()
+        new_files = [f for f in all_files if f["file"] not in self.loaded_files]
+
+        if not all_files and self.content_layout.count() <= 1:
+            self.content_layout.insertWidget(0, QLabel("Geen content"))
+            return
+
+        if not new_files:
+            return
+
+        if self.content_layout.count() > 0:
+            first_item = self.content_layout.itemAt(0).widget()
+            if isinstance(first_item, QLabel) and first_item.text() == "Geen content":
+                first_item.deleteLater()
+
+        for file in new_files:
+            row = QHBoxLayout()
+            checkbox = QCheckBox()
+            checkbox.stateChanged.connect(lambda checked, d=file["dir"], n=file["file"]: self.check_box_checked(d, n, checked))
+            label = QLabel(f"{file["file"]}")
+            
+            open_image_button = QPushButton("Open image")
+            export_file_button = QPushButton("export to excel")
+            remove_file_button = QPushButton("delete file")
+
+            open_image_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.open_file(d, f))
+            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.export_file(d, f))
+            remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
+
+            row.addWidget(checkbox)
+            row.addWidget(label)
+            row.addWidget(open_image_button)
+            row.addWidget(export_file_button)
+            row.addWidget(remove_file_button)
+
+            self.content_layout.insertLayout(0, row)
+            
+            self.loaded_files.add(file["file"])
+
+
+    def open_file(self, dir, file):
+        print(file)
+
+    def export_file(self, dir, file):
+        self.file_path.append(dir)
+
+        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+        self.context = builder.run(builder.handler, self.file_path[:])
+        Exporter().export_to_excel(self.context.text_boxes)
+
+    def export_selected_files(self, dic_list: list):
+        dir_list = []
+        for n in dic_list:
+            dir_list.append(n["dir"])
+
+        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+        self.context = builder.run(builder.handler, dir_list[:])
+        Exporter().export_to_excel(self.context.text_boxes)
+
+    def delete_file(self, dir, file):
+        FileHandler().delete_file(dir)
+        self.loaded_files.remove(file)
+        correct_item = self.retrieve_widget_layout_in_scroll_view(label_name=file)
+
+        while correct_item.count():
+            child = correct_item.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        self.content_layout.removeItem(correct_item)
+
+    def retrieve_widget_layout_in_scroll_view(self, label_name: str):
+        for i in reversed(range(self.content_layout.count() - 1)):
+            item = self.content_layout.itemAt(i).layout()
+
+            for y in range(item.count()):
+                if isinstance(item.itemAt(y).widget(), QLabel):
+                    if item.itemAt(y).widget().text() == label_name:
+                        return item
+
+    def check_box_checked(self, dir, file, checked):
+        if Qt.CheckState(checked) == Qt.CheckState.Checked:
+            self.selected_files_list.append({"dir": dir, "file": file})
+        else:
+            self.selected_files_list.remove({"dir": dir, "file": file})
+
+        if len(self.selected_files_list) > 0:
+            self.delete_selected_button.setEnabled(True)
+            self.export_selected_button.setEnabled(True)
+        else:
+            self.delete_selected_button.setEnabled(False)
+            self.export_selected_button.setEnabled(False)
+
+
+    def delete_selected_files(self, dic_list: list):
+
+        dir_list, file_list = [],[]
+
+        for n in dic_list:
+            dir_list.append(n["dir"])
+            file_list.append(n["file"])
+
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Warning")
+        dlg.setText("Are you sure, you want to remove the selected files?")
+        dlg.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        dlg.setIcon(QMessageBox.Icon.Warning)
+        button = dlg.exec()
+
+        if button == QMessageBox.StandardButton.Yes:
+            
+            FileHandler().delete_files(dir_list)
+            for n in file_list:
+                self.loaded_files.remove(n)
+                correct_widget = self.retrieve_widget_layout_in_scroll_view(label_name=n)
+
+                while correct_widget.count():
+                    child = correct_widget.takeAt(0)
+                    if child.widget():
+                        child.widget().deleteLater()
+
+                self.content_layout.removeItem(correct_widget)
+
+            self.selected_files_list.clear()
+            self.delete_selected_button.setEnabled(False)
+            
+        else:
+            print("not deleted")
+
+    
+    def file_name_list(self, file_list):
+        list = []
+
+        for path in file_list:
+            list.append(QFileInfo(path).fileName())
+
+        return str(list)

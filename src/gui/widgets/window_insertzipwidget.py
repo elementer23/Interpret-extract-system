@@ -9,8 +9,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QGridLayout,
     QWidget,
-    QFileDialog,
-    QListView
+    QFileDialog
 )
 
 from handler.file_handler import FileHandler
