@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
         self.setMenuBar(CustomMenu(self))
 
         self.file_path = []
-        self.context = ""
         self.selected_files_list = []
 
         main_widget = QWidget(self)
@@ -46,26 +45,37 @@ class MainWindow(QMainWindow):
         self.label = QLabel("select...")
 
         self.button = QPushButton("select file(s)")
+        self.button.setStatusTip("select the files to be added.")
         self.button.clicked.connect(self.open_file_dialog)
 
         self.add_button = QPushButton("add file(s)")
+        self.add_button.setStatusTip("add the selected files.")
         self.add_button.setHidden(True)
         self.add_button.clicked.connect(self.add_files)
 
         self.unzip_button = QPushButton("unzip content")
+        self.unzip_button.setStatusTip("unzip the files inside of the chosen zip folder.")
         self.unzip_button.setHidden(True)
         self.unzip_button.clicked.connect(self.unzip_zip)
 
         self.update_list_button = QPushButton("update content")
+        self.update_list_button.setStatusTip("update the content of the list to check for changes.")
         self.update_list_button.clicked.connect(self.dir_content)
 
         self.delete_selected_button = QPushButton("delete selected")
+        self.delete_selected_button.setStatusTip("delete the files that are selected.")
         self.delete_selected_button.setEnabled(False)
         self.delete_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.delete_selected_files(sfl))
 
         self.export_selected_button = QPushButton("export selected")
+        self.export_selected_button.setStatusTip("export the selected files in accordance with the chosen settings.")
         self.export_selected_button.setEnabled(False)
         self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.export_selected_files(sfl))
+
+        self.open_selected_button = QPushButton("open selected")
+        self.open_selected_button.setStatusTip("open the selected files as images with bounding boxes drawn in them.")
+        self.open_selected_button.setEnabled(False)
+        self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.open_selected_files(sfl))
 
         grid_layout.addWidget(QLabel("File(s):"), 1, 0)
         grid_layout.addWidget(self.label, 1, 1)
@@ -73,8 +83,9 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.add_button, 1, 3)
         grid_layout.addWidget(self.unzip_button, 1, 3)
         grid_layout.addWidget(self.update_list_button, 2, 0)
-        grid_layout.addWidget(self.delete_selected_button, 2, 2)
+        grid_layout.addWidget(self.open_selected_button, 2, 2)
         grid_layout.addWidget(self.export_selected_button, 2, 3)
+        grid_layout.addWidget(self.delete_selected_button, 2, 4)
         main_layout.addLayout(grid_layout)
 
         scroll_view = QScrollArea()
@@ -112,11 +123,6 @@ class MainWindow(QMainWindow):
             self.add_button.setHidden(True)
 
             FileHandler().copy_files(self.file_path[:])
-            # builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-
-            # # for file_path in self.file_path:
-            # self.context = builder.run(builder.handler, self.file_path[:])
-
             self.label.setText("Select...")
             self.dir_content()
 
@@ -156,11 +162,14 @@ class MainWindow(QMainWindow):
             label = QLabel(f"{file["file"]}")
             
             open_image_button = QPushButton("Open image")
-            export_file_button = QPushButton("export to excel")
+            open_image_button.setStatusTip("open the chosen file as an image with bounding boxes.")
+            export_file_button = QPushButton("export")
+            export_file_button.setStatusTip("export the chosen file according to the selected settings.")
             remove_file_button = QPushButton("delete file")
+            remove_file_button.setStatusTip("remove the chosen file.")
 
-            open_image_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.open_file(d, f))
-            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.export_file(d, f))
+            open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.open_file(d))
+            export_file_button.clicked.connect(lambda checked, d=file["dir"]: self.export_file(d))
             remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
 
             row.addWidget(checkbox)
@@ -174,15 +183,36 @@ class MainWindow(QMainWindow):
             self.loaded_files.add(file["file"])
 
 
-    def open_file(self, dir, file):
-        print(file)
-
-    def export_file(self, dir, file):
-        self.file_path.append(dir)
+    def open_file(self, dir):
+        dir_list = []
+        dir_list.append(dir)
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        self.context = builder.run(builder.handler, self.file_path[:])
-        Exporter().export_to_excel(self.context.text_boxes)
+        context = builder.run(builder.handler, dir_list[:])
+
+        custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
+        image_context = custom.run(custom.handler, dir_list[:])
+        ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+
+    def open_selected_files(self, dic_list: list):
+        dir_list = []
+        for n in dic_list:
+            dir_list.append(n["dir"])
+
+        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+        context = builder.run(builder.handler, dir_list[:])
+
+        custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
+        image_context = custom.run(custom.handler, dir_list[:])
+        ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+
+    def export_file(self, dir):
+        dir_list = []
+        dir_list.append(dir)
+
+        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+        context = builder.run(builder.handler, dir_list[:])
+        Exporter().export_to_excel(context.text_boxes)
 
     def export_selected_files(self, dic_list: list):
         dir_list = []
@@ -190,8 +220,8 @@ class MainWindow(QMainWindow):
             dir_list.append(n["dir"])
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        self.context = builder.run(builder.handler, dir_list[:])
-        Exporter().export_to_excel(self.context.text_boxes)
+        context = builder.run(builder.handler, dir_list[:])
+        Exporter().export_to_excel(context.text_boxes)
 
     def delete_file(self, dir, file):
         FileHandler().delete_file(dir)
@@ -223,9 +253,11 @@ class MainWindow(QMainWindow):
         if len(self.selected_files_list) > 0:
             self.delete_selected_button.setEnabled(True)
             self.export_selected_button.setEnabled(True)
+            self.open_selected_button.setEnabled(True)
         else:
             self.delete_selected_button.setEnabled(False)
             self.export_selected_button.setEnabled(False)
+            self.open_selected_button.setEnabled(False)
 
 
     def delete_selected_files(self, dic_list: list):

@@ -3,6 +3,7 @@ from vision.image_handler import ImageHandler
 from vision.text_handler import TextHandler
 from vision.detection_handler import DetectionHandler
 from handler.pipeline import Pipeline
+from typing import Any
 
 class Handler():
     def __init__(self):
@@ -12,7 +13,7 @@ class Handler():
     STANDARD_TEXT_BUILD = (FileHandler(), ImageHandler(), TextHandler())
     STANDARD_DETECTION_BUILD = (FileHandler(), ImageHandler(), DetectionHandler())
 
-    def pipeline_builder(self, custom: bool, build_type, *args):
+    def pipeline_builder(self, custom: bool, build_type: Any | None, *args):
         if custom:
             if build_type is None:
                 return Pipeline(*args)

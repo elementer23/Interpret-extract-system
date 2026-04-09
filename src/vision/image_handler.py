@@ -40,10 +40,6 @@ class ImageHandler():
             plt.axis('off')
             plt.show()
 
-        # for bbx in bounding_boxes:
-        #     bbxad = bbx.area_domain()
-        #     cv.rectangle(image, (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 255, 0), 2)
-
     def pdf_to_image_PIL_show(self, file):
         doc = pymupdf.open(file)
         for page in doc:
