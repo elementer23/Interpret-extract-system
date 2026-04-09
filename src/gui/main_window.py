@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, Qt, QFileInfo, QFile, QDir
+from PyQt6.QtCore import QSize, Qt, QFileInfo
 from utils.utilities import BasicUtils
 import zipfile
 from PyQt6.QtWidgets import (
@@ -77,12 +77,16 @@ class MainWindow(QMainWindow):
         self.open_selected_button.setEnabled(False)
         self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.open_selected_files(sfl))
 
+        self.main_checkbox = QCheckBox()
+        self.main_checkbox.stateChanged.connect( lambda checked: self.handle_checkbox_state(checked))
+
         grid_layout.addWidget(QLabel("File(s):"), 1, 0)
         grid_layout.addWidget(self.label, 1, 1)
         grid_layout.addWidget(self.button, 1, 2)
         grid_layout.addWidget(self.add_button, 1, 3)
         grid_layout.addWidget(self.unzip_button, 1, 3)
-        grid_layout.addWidget(self.update_list_button, 2, 0)
+        grid_layout.addWidget(self.main_checkbox, 2, 0)
+        grid_layout.addWidget(self.update_list_button, 2, 1)
         grid_layout.addWidget(self.open_selected_button, 2, 2)
         grid_layout.addWidget(self.export_selected_button, 2, 3)
         grid_layout.addWidget(self.delete_selected_button, 2, 4)
@@ -145,6 +149,7 @@ class MainWindow(QMainWindow):
 
         if not all_files and self.content_layout.count() <= 1:
             self.content_layout.insertWidget(0, QLabel("Geen content"))
+            self.main_checkbox.setEnabled(False)
             return
 
         if not new_files:
@@ -181,6 +186,10 @@ class MainWindow(QMainWindow):
             self.content_layout.insertLayout(0, row)
             
             self.loaded_files.add(file["file"])
+
+        self.main_checkbox.setEnabled(True)
+        if not self.selected_files_list:
+            self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
 
     def open_file(self, dir):
@@ -246,19 +255,26 @@ class MainWindow(QMainWindow):
 
     def check_box_checked(self, dir, file, checked):
         if Qt.CheckState(checked) == Qt.CheckState.Checked:
-            self.selected_files_list.append({"dir": dir, "file": file})
+            self.selected_files_list.append({"checked": True, "dir": dir, "file": file})
         else:
-            self.selected_files_list.remove({"dir": dir, "file": file})
+            self.selected_files_list.remove({"checked": True, "dir": dir, "file": file})
 
-        if len(self.selected_files_list) > 0:
-            self.delete_selected_button.setEnabled(True)
-            self.export_selected_button.setEnabled(True)
-            self.open_selected_button.setEnabled(True)
-        else:
-            self.delete_selected_button.setEnabled(False)
-            self.export_selected_button.setEnabled(False)
-            self.open_selected_button.setEnabled(False)
+        check_handler = len(self.selected_files_list) > 0
 
+        self.delete_selected_button.setEnabled(check_handler)
+        self.export_selected_button.setEnabled(check_handler)
+        self.open_selected_button.setEnabled(check_handler)
+        if not check_handler:
+            self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
+
+    def handle_checkbox_state(self, checked):
+        get_checkstate = Qt.CheckState.Checked if Qt.CheckState(checked) == Qt.CheckState.Checked else Qt.CheckState.Unchecked
+
+        for i in reversed(range(self.content_layout.count() - 1)):
+            item = self.content_layout.itemAt(i).layout()
+            for y in range(item.count()):
+                if isinstance(item.itemAt(y).widget(), QCheckBox):
+                    item.itemAt(y).widget().setCheckState(get_checkstate)
 
     def delete_selected_files(self, dic_list: list):
 
