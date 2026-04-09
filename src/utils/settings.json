@@ -1,0 +1,26 @@
+{
+    "settings": [
+        {
+            "default_export": "excel",
+            "export_options": [
+                "csv",
+                "json",
+                "excel"
+            ],
+            "chosen_export": "excel",
+            "file_selection_options": [
+                "(*.png)",
+                "(*.jpg)",
+                "(*.jpeg)",
+                "(*.webp)",
+                "(*.pdf)",
+                "(*.dwg)",
+                "(*.zip)"
+            ],
+            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)",
+            "custom_file_selection": "",
+            "file_selection_name": "Default",
+            "custom_file_selection_name": ""
+        }
+    ]
+}

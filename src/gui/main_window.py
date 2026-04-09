@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
     def open_file_dialog(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        dialog.setNameFilter("General (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)")
+        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)")
 
         if dialog.exec():
             self.label.setText(self.file_name_list(dialog.selectedFiles()))
