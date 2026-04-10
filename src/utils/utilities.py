@@ -68,3 +68,35 @@ class BasicUtils(object):
                     return True
                 else:
                     return False
+                
+    @staticmethod
+    def strip_all_except_letters(val: str | list) -> str | list:
+        arr = []
+        if not val:
+            return ""
+
+        if isinstance(val, str):
+            result = re.sub(r'[^A-Za-z]', '', val)
+            result = result.lower()
+
+            return result
+        elif isinstance(val, list):
+            for n in val:
+                result = re.sub(r'[^A-Za-z]', '', n)
+                result = result.lower()
+                arr.append(result)
+            
+            return arr
+        
+    @staticmethod
+    def first_upper_case(s: str) -> str:
+        s = BasicUtils.strip_all_except_letters(s[:])
+        if not s:
+            return ""
+        
+        arr = []
+        for c in s:
+            arr.append(c)
+
+        arr[0] = arr[0].upper()
+        return ''.join(arr)

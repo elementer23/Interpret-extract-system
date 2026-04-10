@@ -1,4 +1,5 @@
 from openpyxl import Workbook
+import json
 
 class Exporter():
     def __init__(self):
@@ -24,3 +25,6 @@ class Exporter():
                 ws.append(row)
 
         wb.save(r"C:/Users/697/Documents/output.xlsx")
+
+    def export_to_json(self, data_to_enter: list) -> None:
+        pass

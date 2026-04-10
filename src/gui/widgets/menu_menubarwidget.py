@@ -14,7 +14,6 @@ class CustomMenu(QMenuBar):
         self.insert_single_file_window = InsertSingleFileWindow()
         self.insert_bulk_file_window = InsertBulkFileWindow()
         self.insert_zip_file_window = InsertZipFileWindow()
-        self.settings_window = SettingsWindow()
 
         insert_action = QAction("&new file", self)
         insert_action.setStatusTip("insert file")
@@ -34,7 +33,7 @@ class CustomMenu(QMenuBar):
         open_settings = QAction("&open settings", self)
         open_settings.setStatusTip("open the settings")
         open_settings.setShortcut(QKeySequence("Ctrl+o"))
-        open_settings.triggered.connect( lambda checked: self.open_insert_window(self.settings_window))
+        open_settings.triggered.connect(self.open_setting_window)
 
         parent.setStatusBar(QStatusBar(self))
 
@@ -51,3 +50,7 @@ class CustomMenu(QMenuBar):
             window.hide()
         else:
             window.show()
+
+    def open_setting_window(self):
+        self.settings_window = SettingsWindow()
+        self.settings_window.show()

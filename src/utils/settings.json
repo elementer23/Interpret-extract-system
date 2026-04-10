@@ -3,11 +3,11 @@
         {
             "default_export": "excel",
             "export_options": [
-                "csv",
+                "excel",
                 "json",
-                "excel"
+                "csv"
             ],
-            "chosen_export": "excel",
+            "chosen_export": "",
             "file_selection_options": [
                 "(*.png)",
                 "(*.jpg)",
