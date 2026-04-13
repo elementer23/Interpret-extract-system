@@ -46,22 +46,13 @@ class SettingsWindow(QWidget):
         self.combobox.addItems(Settings.retrieve_settings()["export_options"])
         self.combobox.currentTextChanged.connect(self.change_export_setting)
 
-        # self.change_button = QPushButton("change export")
-        # self.change_button.clicked.connect(self.change_export_setting)
-
         self.input = QLineEdit()
         self.input.setText(f"{Settings.retrieve_settings()['custom_file_selection']}")
         self.input.textChanged.connect(self.change_custom_file_selection_setting)
 
-        # self.input_button = QPushButton("change custom file selection")
-        # self.input_button.clicked.connect(self.change_custom_file_selection_setting)
-
         self.selection_input = QLineEdit()
         self.selection_input.setText(f"{Settings.retrieve_settings()['custom_file_selection_name']}")
         self.selection_input.textChanged.connect(self.change_custom_file_selection_name_setting)
-
-        # self.select_input_button = QPushButton("change custom file selection name")
-        # self.select_input_button.clicked.connect(self.change_custom_file_selection_name_setting)
 
         self.apply_button = QPushButton("apply settings")
         self.apply_button.clicked.connect(self.apply_settings)
@@ -70,7 +61,6 @@ class SettingsWindow(QWidget):
         self.default_button.clicked.connect(self.default_settings)
 
         form_layout.addRow(QLabel(f"default export: {Settings.retrieve_settings()['default_export']}"))
-        # form_layout.addRow(QLabel(f"chosen export: {Settings.retrieve_settings()['chosen_export']}"))
         form_layout.addRow(QLabel(f"chosen export: {Settings.retrieve_settings()['chosen_export']}"), self.combobox)
         group_box.setLayout(form_layout)
         main_layout.addWidget(group_box)
@@ -78,10 +68,8 @@ class SettingsWindow(QWidget):
         file_form_layout.addRow(QLabel(f"default file selection: {Settings.retrieve_settings()['default_file_selection']}"))
         file_form_layout.addRow(QLabel(f"file selection options: {Settings.retrieve_settings()['file_selection_options']}"))
         file_form_layout.addRow(QLabel("custom file selection:"), self.input)
-        # file_form_layout.addRow(self.input, self.input_button)
         file_form_layout.addRow(QLabel(f"file selection name: {Settings.retrieve_settings()['file_selection_name']}"))
         file_form_layout.addRow(QLabel("custom file selection name:"), self.selection_input)
-        # file_form_layout.addRow(self.selection_input, self.select_input_button)
         file_box.setLayout(file_form_layout)
         main_layout.addWidget(file_box)
 

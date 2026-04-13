@@ -44,13 +44,16 @@ class BasicUtils(object):
                 return True
             
     @staticmethod        
-    def does_file_exist(file: str | None, file_list: list | None) -> bool:
-        if file is None and file_list is None:
+    def does_file_exist(file: str | None, file_list: list | None, file_dir: str) -> bool:
+        if file is None and file_list is None and not file_dir:
+            return True
+        
+        if not file_dir:
             return True
         
         if file_list is None or not file_list:
             source_file = Path(file)
-            target_dir = Path("C:/Users/697/Documents/temp_files/")
+            target_dir = Path(file_dir)
             target_file = target_dir / source_file.name
             
             if target_file.exists():
@@ -61,7 +64,7 @@ class BasicUtils(object):
         if file is None or not file:
             for files in file_list:
                 source_file = Path(files)
-                target_dir = Path("C:/Users/697/Documents/temp_files/")
+                target_dir = Path(file_dir)
                 target_file = target_dir / source_file.name
 
                 if target_file.exists():

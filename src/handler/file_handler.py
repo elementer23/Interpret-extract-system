@@ -39,7 +39,7 @@ class FileHandler():
         return file_context
     
     def copy_files(self, file_list: list):
-        if not BasicUtils.does_file_exist(file=None, file_list=file_list):
+        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir="C:/Users/697/Documents/temp_files/"):
             for file in file_list:
                 source_file = Path(file)
                 target_dir = Path("C:/Users/697/Documents/temp_files/")
@@ -47,13 +47,13 @@ class FileHandler():
                 shutil.copy2(source_file, target_dir)
 
     def delete_file(self, file: str):
-        if BasicUtils.does_file_exist(file=file, file_list=None):
+        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir="C:/Users/697/Documents/temp_files/"):
             os.remove(file)
         else:
             print("Bestand bestaat niet")
 
     def delete_files(self, file_list: list):
-        if BasicUtils.does_file_exist(file=None, file_list=file_list):
+        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir="C:/Users/697/Documents/temp_files/"):
             for f in file_list:
                 os.remove(f)
         else:
