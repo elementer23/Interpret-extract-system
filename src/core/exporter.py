@@ -1,11 +1,12 @@
 from openpyxl import Workbook
 import csv
 import json
-import pathlib
-from utils.utilities import BasicUtils
+import shutil
+from py7zr import pack_7zarchive, unpack_7zarchive
 from utils.settings import Settings
 from enumeration.package_type import PackageType
-from core.exporters.zip_exporter import ZipExporter
+from handler.file_handler import FileHandler
+
 
 class Exporter():
     def __init__(self):
@@ -14,8 +15,10 @@ class Exporter():
         self.dir_path = Settings.retrieve_settings()['directory_path'] 
         self.dir_name = Settings.retrieve_settings()['temp_dir_name']
 
-    def export_to_excel(self, data_to_enter: list, package_type: PackageType) -> None:
+    def export_to_excel(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
         wb = Workbook()
+
+        package_type = package_type.value
 
         if package_type == 4:
             for i, entry in enumerate(data_to_enter):
@@ -89,31 +92,10 @@ class Exporter():
                 fieldnames = ['type', 'text', 'left', 'top', 'width', 'height']
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writerows(boundaries)
-    
 
-    def temp_dir(self, dir_path: str, dir_name: str) -> None:
-        if not pathlib.Path(f"{dir_path}/{dir_name}").is_dir():
-            directory_path = pathlib.Path(f"{dir_path}/{dir_name}")
-
-            try:
-                directory_path.mkdir()
-                print(f"Directory '{directory_path}' created successfully.")
-            except FileExistsError:
-                print(f"Directory '{directory_path}' already exists.")
-            except PermissionError:
-                print(f"Permission denied: Unable to create '{directory_path}'.")
-            except Exception as e:
-                print(f"An error occurred: {e}")
-    
     
     def execute_export(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
-        self.temp_dir(dir_path=self.dir_path, dir_name=self.dir_name)
-
-        if isinstance(package_type, PackageType):
-            package_type = package_type.value
-
-        if not package_type or package_type != 4:
-            package_type = 3
+        FileHandler().temp_dir(dir_path=self.dir_path, dir_name=self.dir_name)
 
         if len(Settings.retrieve_settings()["chosen_export"]) == 0:
             self.export_to_excel(data_to_enter=data_to_enter, package_type=package_type)
@@ -126,19 +108,26 @@ class Exporter():
             case "csv":
                 self.export_to_csv(data_to_enter=data_to_enter)
 
+        self.execute_package_export(package_type=package_type)
 
-    def _export_package_as_(self, package_type: PackageType = PackageType.DEFAULT) -> None:
+
+    def execute_package_export(self, package_type: PackageType = PackageType.DEFAULT) -> None:
+        shutil.register_archive_format('7zip', pack_7zarchive, description='7zip archive')
+        shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
 
         if isinstance(package_type, PackageType):
             package_type = package_type.value
 
         match package_type:
             case 0:
-                ZipExporter().export_to_zip(self.dir_path, self.dir_name)
+                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="zip", root_dir=f"{self.dir_path}/{self.dir_name}")
+                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
             case 1:
-                pass
+                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="7zip", root_dir=f"{self.dir_path}/{self.dir_name}")
+                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
             case 2: 
-                pass
+                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="tar", root_dir=f"{self.dir_path}/{self.dir_name}")
+                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
             case 3:
                 pass
             case 4:

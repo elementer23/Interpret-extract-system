@@ -19,7 +19,7 @@ from handler.file_handler import FileHandler
 from vision.image_handler import ImageHandler
 from vision.text_handler import TextHandler
 import matplotlib.pyplot as plt
-from utils.settings import Settings
+from utils.settings import Settings, PackageSettings
 from core.exporter import Exporter
 from gui.widgets.menu_menubarwidget import CustomMenu
 
@@ -222,8 +222,7 @@ class MainWindow(QMainWindow):
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes)
-        Exporter()._export_package_as_(3)
+        Exporter().execute_export(context.text_boxes, PackageSettings.manage_package())
 
     def export_selected_files(self, dic_list: list):
         dir_list = []
@@ -232,8 +231,7 @@ class MainWindow(QMainWindow):
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes, 4)
-        Exporter()._export_package_as_(3)
+        Exporter().execute_export(context.text_boxes, PackageSettings.manage_package())
 
     def delete_file(self, dir, file):
         FileHandler().delete_file(dir)

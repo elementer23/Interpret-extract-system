@@ -4,6 +4,7 @@ import os
 import shutil
 from pathlib import Path
 from utils.utilities import BasicUtils
+import pathlib
 
 class FileHandler():
     def __init__(self):
@@ -58,3 +59,46 @@ class FileHandler():
                 os.remove(f)
         else:
             print("Bestand(en) bestaat niet")
+
+    def temp_dir(self, dir_path: str, dir_name: str) -> None:
+        if not pathlib.Path(f"{dir_path}/{dir_name}").is_dir():
+            directory_path = pathlib.Path(f"{dir_path}/{dir_name}")
+
+            try:
+                directory_path.mkdir()
+                print(f"Directory '{directory_path}' created successfully.")
+            except FileExistsError:
+                print(f"Directory '{directory_path}' already exists.")
+            except PermissionError:
+                print(f"Permission denied: Unable to create '{directory_path}'.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+    def remove_dir(self, dir_path: str) -> None:
+        for file in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, file)
+
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+        pathlib.Path(dir_path).rmdir()
+
+    def conversion(self, file_s: list) -> np.ndarray:
+        for i in range(len(file_s)):
+            doc = pymupdf.open(file_s[i])
+            for page in doc:
+                zoom = 300 / 72
+                mat = pymupdf.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat)
+
+                np_buffer = np.frombuffer(pix.samples, dtype=np.uint8)
+
+                if pix.n == 4:
+                    np_buffer = np_buffer.reshape(pix.height, pix.width, 4)
+                else:
+                    np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
+
+                pix.save(f"image-{page.number}.png")
+            doc.close()
+
+            return np_buffer        

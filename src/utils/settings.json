@@ -3,11 +3,11 @@
         {
             "default_export": "excel",
             "export_options": [
-                "json",
                 "excel",
+                "json",
                 "csv"
             ],
-            "chosen_export": "json",
+            "chosen_export": "",
             "file_selection_options": [
                 "(*.png)",
                 "(*.jpg)",
@@ -22,7 +22,15 @@
             "file_selection_name": "Default",
             "custom_file_selection_name": "",
             "directory_path": "C:/Users/697/Documents",
-            "temp_dir_name": "temp_dir"
+            "temp_dir_name": "temp_dir",
+            "package_type_s": [
+                "7zip",
+                "multi_sheet",
+                "zip",
+                "tar",
+                "default"
+            ],
+            "chosen_package": "7zip"
         }
     ]
 }

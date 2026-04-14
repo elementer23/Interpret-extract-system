@@ -6,6 +6,7 @@ from gui.widgets.window_insertsinglewidget import InsertSingleFileWindow
 from gui.widgets.window_insertbulkwidget import InsertBulkFileWindow
 from gui.widgets.window_insertzipwidget import InsertZipFileWindow
 from gui.widgets.window_settingswidget import SettingsWindow
+from gui.widgets.window_exportimagewidget import ExportImageWindow
 
 class CustomMenu(QMenuBar):
     def __init__(self, parent=None):
@@ -35,15 +36,20 @@ class CustomMenu(QMenuBar):
         open_settings.setShortcut(QKeySequence("Ctrl+o"))
         open_settings.triggered.connect(self.open_setting_window)
 
+        open_export_image = QAction("&file(s) to image(s)", self)
+        open_export_image.setStatusTip("export file(s) to image(s)")
+        open_export_image.setShortcut(QKeySequence("Ctrl+Shift+i"))
+        open_export_image.triggered.connect(self.open_export_image_window)
+
         parent.setStatusBar(QStatusBar(self))
 
         file_menu = self.addMenu("&File")
         file_insertmenu = file_menu.addMenu("insert")
         file_insertmenu.addActions([insert_action, insert_bulk, insert_zip])
 
-        settings_menu = self.addMenu("&Settings")
-        settings_insertmenu = settings_menu.addMenu("settings")
-        settings_insertmenu.addActions([open_settings])
+        options_menu = self.addMenu("&Options")
+        options_insertmenu = options_menu.addMenu("options")
+        options_insertmenu.addActions([open_export_image, open_settings])
 
     def open_insert_window(self, window):
         if window.isVisible():
@@ -54,3 +60,7 @@ class CustomMenu(QMenuBar):
     def open_setting_window(self):
         self.settings_window = SettingsWindow()
         self.settings_window.show()
+
+    def open_export_image_window(self):
+        self.export_image_window = ExportImageWindow()
+        self.export_image_window.show()

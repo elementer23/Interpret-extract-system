@@ -1,5 +1,6 @@
 import json
 from utils.utilities import BasicUtils
+from enumeration.package_type import PackageType
 import re
 from typing import Any
 
@@ -88,6 +89,46 @@ class Settings(object):
             print("Error: Failed to encode JSON to the file.")
 
     @staticmethod
+    def change_directory_path(chosen_path: str) -> None:
+        Settings.write_to_settings(chosen_path, "directory_path")
+
+    @staticmethod
+    def change_temp_dir_name(chosen_name: str) -> None:
+        if not chosen_name:
+            return
+        
+        Settings.write_to_settings(chosen_name, "temp_dir_name")
+
+
+    @staticmethod
+    def change_chosen_package(chosen_package: str) -> None:
+        Settings.write_to_settings(chosen_package, "chosen_package")
+
+    
+    @staticmethod
+    def change_package_type_s(chosen_package: str) -> None:
+        try:
+            with open('../src/utils/settings.json', 'r') as file:
+                data = json.load(file)
+            if 'package_type_s' in data['settings'][0]:
+                l = data['settings'][0]['package_type_s']
+                arr = []
+                for i in range(len(l)):
+                    arr.append(l[i])
+                    
+                temp = arr[0]
+                arr[arr.index(chosen_package)] = temp
+                arr[0] = chosen_package
+                data['settings'][0]['package_type_s'] = arr
+
+            with open('../src/utils/settings.json', 'w') as file:
+                json.dump(data, file, indent=4)
+
+        except json.JSONDecodeError:
+            print("Error: Failed to encode JSON to the file.")
+
+
+    @staticmethod
     def is_applicable_file_type(file_type_s: str | list) -> bool:
         n = file_type_s
         arr = ["png", "jpg", "jpeg", "webp", "pdf", "dwg", "zip"]
@@ -136,6 +177,13 @@ class Settings(object):
                     Settings.change_custom_file_selection(value)
                 case "custom_file_selection_name":
                     Settings.change_custom_file_selection_name(value)
+                case "directory_path":
+                    Settings.change_directory_path(value)   
+                case "temp_dir_name":
+                    Settings.change_temp_dir_name(value)
+                case "chosen_package":
+                    Settings.change_chosen_package(value)
+                    Settings.change_package_type_s(value)
 
         return "changes have been made."
     
@@ -145,7 +193,26 @@ class Settings(object):
         Settings.write_to_settings("", "chosen_export")
         Settings.write_to_settings("", "custom_file_selection")
         Settings.write_to_settings("", "custom_file_selection_name")
+        Settings.write_to_settings("C:/Users/697/Documents", "directory_path")
+        Settings.write_to_settings("temp_dir", "temp_dir_name")
+        Settings.write_to_settings(["default", "multi_sheet", "zip", "7zip", "tar"], "package_type_s")
+        Settings.write_to_settings("default", "chosen_package")
 
         return "default applied"
     
 
+class PackageSettings(object):
+
+    @staticmethod
+    def manage_package() -> PackageType:
+        match Settings.retrieve_settings()['chosen_package']:
+            case "default":
+                return PackageType.DEFAULT
+            case "multi_sheet":
+                return PackageType.MULTI_SINGULAR
+            case "zip":
+                return PackageType.ZIP
+            case "tar":
+                return PackageType.TAR
+            case "7zip":
+                return PackageType.SEVENZ
