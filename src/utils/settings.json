@@ -24,13 +24,13 @@
             "directory_path": "C:/Users/697/Documents",
             "temp_dir_name": "temp_dir",
             "package_type_s": [
-                "7zip",
+                "default",
                 "multi_sheet",
                 "zip",
-                "tar",
-                "default"
+                "7zip",
+                "tar"
             ],
-            "chosen_package": "7zip"
+            "chosen_package": "default"
         }
     ]
 }

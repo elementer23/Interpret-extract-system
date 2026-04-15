@@ -19,12 +19,12 @@ class Settings(object):
 
 
     @staticmethod
-    def retrieve_settings() -> Any:
+    def retrieve_settings(name: str | None = None) -> Any:
         try:
             with open('../src/utils/settings.json', 'r') as file:
                 data = json.load(file)
                 for n in data["settings"]:
-                    return n
+                    return n[name] if name is not None else n
 
         except json.JSONDecodeError:
             print("Error: Failed to decode JSON from the file.")
@@ -204,8 +204,8 @@ class Settings(object):
 class PackageSettings(object):
 
     @staticmethod
-    def manage_package() -> PackageType:
-        match Settings.retrieve_settings()['chosen_package']:
+    def manage_package(packaging: str = Settings.retrieve_settings('chosen_package')) -> PackageType:
+        match packaging:
             case "default":
                 return PackageType.DEFAULT
             case "multi_sheet":

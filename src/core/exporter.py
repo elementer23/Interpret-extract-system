@@ -7,13 +7,19 @@ from utils.settings import Settings
 from enumeration.package_type import PackageType
 from handler.file_handler import FileHandler
 
+#Register the package to prevent register and threading problems for later on.
+try:
+    shutil.register_archive_format('7zip', pack_7zarchive, description='7zip archive')
+    shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
+except Exception as e:
+    pass
 
 class Exporter():
     def __init__(self):
         pass
 
-        self.dir_path = Settings.retrieve_settings()['directory_path'] 
-        self.dir_name = Settings.retrieve_settings()['temp_dir_name']
+        self.dir_path = Settings.retrieve_settings('directory_path')
+        self.dir_name = Settings.retrieve_settings('temp_dir_name')
 
     def export_to_excel(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
         wb = Workbook()
@@ -97,10 +103,10 @@ class Exporter():
     def execute_export(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
         FileHandler().temp_dir(dir_path=self.dir_path, dir_name=self.dir_name)
 
-        if len(Settings.retrieve_settings()["chosen_export"]) == 0:
+        if len(Settings.retrieve_settings("chosen_export")) == 0:
             self.export_to_excel(data_to_enter=data_to_enter, package_type=package_type)
         
-        match Settings.retrieve_settings()["chosen_export"]:
+        match Settings.retrieve_settings("chosen_export"):
             case "excel":
                 self.export_to_excel(data_to_enter=data_to_enter, package_type=package_type)
             case "json":
@@ -108,26 +114,25 @@ class Exporter():
             case "csv":
                 self.export_to_csv(data_to_enter=data_to_enter)
 
-        self.execute_package_export(package_type=package_type)
+        self.execute_package_export(dir_path=self.dir_path, dir_name=self.dir_name, package_type=package_type)
 
 
-    def execute_package_export(self, package_type: PackageType = PackageType.DEFAULT) -> None:
-        shutil.register_archive_format('7zip', pack_7zarchive, description='7zip archive')
-        shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
-
+    def execute_package_export(self, dir_path: str, dir_name: str, package_type: PackageType = PackageType.DEFAULT) -> None:
         if isinstance(package_type, PackageType):
             package_type = package_type.value
 
+        directory = f"{dir_path}/{dir_name}"
+
         match package_type:
             case 0:
-                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="zip", root_dir=f"{self.dir_path}/{self.dir_name}")
-                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
+                shutil.make_archive(base_name=directory, format="zip", root_dir=directory)
+                FileHandler().remove_dir(directory)
             case 1:
-                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="7zip", root_dir=f"{self.dir_path}/{self.dir_name}")
-                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
+                shutil.make_archive(base_name=directory, format="7zip", root_dir=directory)
+                FileHandler().remove_dir(directory)
             case 2: 
-                shutil.make_archive(base_name=f"{self.dir_path}/{self.dir_name}", format="tar", root_dir=f"{self.dir_path}/{self.dir_name}")
-                FileHandler().remove_dir(f"{self.dir_path}/{self.dir_name}")
+                shutil.make_archive(base_name=directory, format="tar", root_dir=directory)
+                FileHandler().remove_dir(directory)
             case 3:
                 pass
             case 4:

@@ -42,30 +42,30 @@ class SettingsWindow(QWidget):
         self.get_button.clicked.connect(self.get_json_info)
 
         self.combobox = QComboBox()
-        self.combobox.addItems(Settings.retrieve_settings()["export_options"])
+        self.combobox.addItems(Settings.retrieve_settings("export_options"))
         self.combobox.currentTextChanged.connect(self.change_export_setting)
 
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
 
-        self.select_dir_button = QPushButton(f"{Settings.retrieve_settings()['directory_path']}")
+        self.select_dir_button = QPushButton(f"{Settings.retrieve_settings('directory_path')}")
         self.select_dir_button.setIcon(icon)
         self.select_dir_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.select_dir_button.clicked.connect( lambda checked, origin_path=Settings.retrieve_settings()['directory_path']: self.open_dir(origin_path=origin_path))
+        self.select_dir_button.clicked.connect( lambda checked, origin_path=Settings.retrieve_settings('directory_path'): self.open_dir(origin_path=origin_path))
 
         self.directory_name_input = QLineEdit()
-        self.directory_name_input.setText(f"{Settings.retrieve_settings()['temp_dir_name']}")
+        self.directory_name_input.setText(f"{Settings.retrieve_settings('temp_dir_name')}")
         self.directory_name_input.textChanged.connect(self.change_temp_dir_name_setting)
 
         self.package_box = QComboBox()
-        self.package_box.addItems(Settings.retrieve_settings()['package_type_s'])
+        self.package_box.addItems(Settings.retrieve_settings('package_type_s'))
         self.package_box.currentTextChanged.connect(self.change_package_type_setting)
 
         self.input = QLineEdit()
-        self.input.setText(f"{Settings.retrieve_settings()['custom_file_selection']}")
+        self.input.setText(f"{Settings.retrieve_settings('custom_file_selection')}")
         self.input.textChanged.connect(self.change_custom_file_selection_setting)
 
         self.selection_input = QLineEdit()
-        self.selection_input.setText(f"{Settings.retrieve_settings()['custom_file_selection_name']}")
+        self.selection_input.setText(f"{Settings.retrieve_settings('custom_file_selection_name')}")
         self.selection_input.textChanged.connect(self.change_custom_file_selection_name_setting)
 
         self.apply_button = QPushButton("apply settings")
@@ -74,18 +74,18 @@ class SettingsWindow(QWidget):
         self.default_button = QPushButton("to default")
         self.default_button.clicked.connect(self.default_settings)
 
-        form_layout.addRow(QLabel(f"default export: {Settings.retrieve_settings()['default_export']}"))
-        form_layout.addRow(QLabel(f"chosen export: {Settings.retrieve_settings()['chosen_export']}"), self.combobox)
+        form_layout.addRow(QLabel(f"default export: {Settings.retrieve_settings('default_export')}"))
+        form_layout.addRow(QLabel(f"chosen export: {Settings.retrieve_settings('chosen_export')}"), self.combobox)
         form_layout.addRow(QLabel("directory path:"), self.select_dir_button)
         form_layout.addRow(QLabel("directory name:"), self.directory_name_input)
         form_layout.addRow(QLabel("package type:"), self.package_box)
         group_box.setLayout(form_layout)
         main_layout.addWidget(group_box)
 
-        file_form_layout.addRow(QLabel(f"default file selection: {Settings.retrieve_settings()['default_file_selection']}"))
-        file_form_layout.addRow(QLabel(f"file selection options: {Settings.retrieve_settings()['file_selection_options']}"))
+        file_form_layout.addRow(QLabel(f"default file selection: {Settings.retrieve_settings('default_file_selection')}"))
+        file_form_layout.addRow(QLabel(f"file selection options: {Settings.retrieve_settings('file_selection_options')}"))
         file_form_layout.addRow(QLabel("custom file selection:"), self.input)
-        file_form_layout.addRow(QLabel(f"file selection name: {Settings.retrieve_settings()['file_selection_name']}"))
+        file_form_layout.addRow(QLabel(f"file selection name: {Settings.retrieve_settings('file_selection_name')}"))
         file_form_layout.addRow(QLabel("custom file selection name:"), self.selection_input)
         file_box.setLayout(file_form_layout)
         main_layout.addWidget(file_box)
@@ -101,7 +101,7 @@ class SettingsWindow(QWidget):
         Settings.read_settings()
 
     def get_json_info(self):
-        print(Settings.retrieve_settings()["default_export"])
+        print(Settings.retrieve_settings("default_export"))
 
     def open_dir(self, origin_path: str):
         dialog = QFileDialog.getExistingDirectory(

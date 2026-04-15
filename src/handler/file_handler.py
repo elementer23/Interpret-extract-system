@@ -83,7 +83,8 @@ class FileHandler():
 
         pathlib.Path(dir_path).rmdir()
 
-    def conversion(self, file_s: list) -> np.ndarray:
+    def conversion(self, file_s: list) -> list:
+        arr = []
         for i in range(len(file_s)):
             doc = pymupdf.open(file_s[i])
             for page in doc:
@@ -98,7 +99,8 @@ class FileHandler():
                 else:
                     np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
 
-                pix.save(f"image-{page.number}.png")
+                arr.append(np_buffer)
+
             doc.close()
 
-            return np_buffer        
+        return arr        

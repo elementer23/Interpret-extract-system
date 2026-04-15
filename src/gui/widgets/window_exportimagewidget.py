@@ -14,9 +14,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QCheckBox
 )
-from utils.settings import PackageSettings, PackageType, Settings
 from handler.file_handler import FileHandler
 from vision.image_handler import ImageHandler
+from utils.settings import Settings
 
 class ExportImageWindow(QWidget):
     def __init__(self):
@@ -27,6 +27,7 @@ class ExportImageWindow(QWidget):
         self.setMaximumSize(QSize(600, 550))
 
         self.files = []
+        # self.convert_ops = {}
 
         main_layout = QVBoxLayout()
 
@@ -56,7 +57,7 @@ class ExportImageWindow(QWidget):
 
         self.combobox_export_type = QComboBox()
         self.combobox_export_type.setHidden(True)
-        self.combobox_export_type.addItems(["default", ".zip", ".7zip", ".tar"])
+        self.combobox_export_type.addItems(["default", "zip", "7zip", "tar"])
 
         self.encryption_input_label = QLabel("optional password:")
         self.encryption_input_label.setHidden(True)
@@ -76,6 +77,7 @@ class ExportImageWindow(QWidget):
         self.save_location_button = QPushButton("default")
         self.save_location_button.setIcon(icon)
         self.save_location_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.save_location_button.clicked.connect(self.decide_save_location)
 
         self.save_as = QLineEdit("images")
 
@@ -125,6 +127,11 @@ class ExportImageWindow(QWidget):
         self.effect_type_label.setHidden(is_hidden)
         self.combobox_effect_type.setHidden(is_hidden)
 
+        if is_hidden:
+            self.combobox_export_type.setCurrentIndex(0)
+            self.encryption_input.setText("")
+            self.combobox_effect_type.setCurrentIndex(0)
+
 
     def open_dir(self):
         dialog = QFileDialog()
@@ -136,12 +143,46 @@ class ExportImageWindow(QWidget):
             self.convert_button.setEnabled(True)    
             self.files = dialog.selectedFiles()
 
+
+    def decide_save_location(self):
+
+        directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
+
+        dialog = QFileDialog.getExistingDirectory(
+            parent=self,
+            caption="Select directory",
+            directory=directory,
+            options=QFileDialog.Option.ShowDirsOnly
+        )
+
+        if dialog:
+            self.save_location_button.setText(dialog)
+
     def convert(self):
         self.label.setText(f"Selected:")
         self.convert_button.setEnabled(False)
-        FileHandler().conversion(self.files)
+        directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
 
-    
+        convert_ops = {}
+        convert_ops.update({"color_type": self.combobox_color_type.currentText()})
+        convert_ops.update({"image_type": self.combobox_image_type.currentText()})
+        convert_ops.update({"save_location": directory})
+        convert_ops.update({"file_name": "image"})
+        convert_ops.update({"archive_name": self.save_as.text()})
+
+        encryption = self.encryption_input.text() if len(self.encryption_input.text()) > 0 else None
+        
+        convert_ops.update({"export_type": self.combobox_export_type.currentText()})
+        convert_ops.update({"encryption": encryption})
+        convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
+
+        FileHandler().temp_dir(convert_ops['save_location'], convert_ops['archive_name'])
+
+        c_file = FileHandler().conversion(self.files[:])
+
+        ImageHandler().conversion(c_file, convert_ops)
+
+
     def file_name_list(self, file_list):
         list = []
 
