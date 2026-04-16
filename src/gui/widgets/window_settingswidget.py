@@ -74,6 +74,15 @@ class SettingsWindow(QWidget):
         self.default_button = QPushButton("to default")
         self.default_button.clicked.connect(self.default_settings)
 
+        self.file_container_button = QPushButton(f"{Settings.retrieve_settings('temp_files_path')}")
+        self.file_container_button.setIcon(icon)
+        self.file_container_button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.file_container_button.clicked.connect( lambda checked, origin_path=Settings.retrieve_settings('temp_files_path'): self.open_container_dir(origin_path=origin_path))
+
+        self.file_container_input = QLineEdit()
+        self.file_container_input.setText(f"{Settings.retrieve_settings('temp_files_name')}")
+        self.file_container_input.textChanged.connect(self.change_temp_files_name_setting)
+
         form_layout.addRow(QLabel(f"default export: {Settings.retrieve_settings('default_export')}"))
         form_layout.addRow(QLabel(f"chosen export: {Settings.retrieve_settings('chosen_export')}"), self.combobox)
         form_layout.addRow(QLabel("directory path:"), self.select_dir_button)
@@ -87,6 +96,8 @@ class SettingsWindow(QWidget):
         file_form_layout.addRow(QLabel("custom file selection:"), self.input)
         file_form_layout.addRow(QLabel(f"file selection name: {Settings.retrieve_settings('file_selection_name')}"))
         file_form_layout.addRow(QLabel("custom file selection name:"), self.selection_input)
+        file_form_layout.addRow(QLabel("file container directory:"), self.file_container_button)
+        file_form_layout.addRow(QLabel("file container name:"), self.file_container_input)
         file_box.setLayout(file_form_layout)
         main_layout.addWidget(file_box)
 
@@ -113,6 +124,20 @@ class SettingsWindow(QWidget):
 
         if dialog:
             self.settings.update({"directory_path": dialog})
+
+    def open_container_dir(self, origin_path: str):
+        dialog = QFileDialog.getExistingDirectory(
+            parent=self,
+            caption="Select directory",
+            directory=origin_path,
+            options=QFileDialog.Option.ShowDirsOnly
+        )
+
+        if dialog:
+            self.settings.update({"temp_files_path": dialog})
+
+    def change_temp_files_name_setting(self, val):
+        self.settings.update({"temp_files_name": val})
 
     def change_export_setting(self, val):
         self.settings.update({"chosen_export": val})

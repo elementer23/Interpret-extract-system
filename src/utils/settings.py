@@ -127,11 +127,22 @@ class Settings(object):
         except json.JSONDecodeError:
             print("Error: Failed to encode JSON to the file.")
 
+    
+    @staticmethod
+    def change_temp_files_path(chosen_files_path: str) -> None:
+        Settings.write_to_settings(chosen_files_path, "temp_files_path")
+
+    @staticmethod
+    def change_temp_files_name(chosen_files_name: str) -> None:
+        if not chosen_files_name:
+            return
+        
+        Settings.write_to_settings(chosen_files_name, "temp_files_name")
 
     @staticmethod
     def is_applicable_file_type(file_type_s: str | list) -> bool:
         n = file_type_s
-        arr = ["png", "jpg", "jpeg", "webp", "pdf", "dwg", "zip"]
+        arr = ["png", "jpg", "jpeg", "webp", "pdf", "dwg", "zip", "tar", "7zip"]
 
         if not n:
             return False
@@ -184,6 +195,10 @@ class Settings(object):
                 case "chosen_package":
                     Settings.change_chosen_package(value)
                     Settings.change_package_type_s(value)
+                case "temp_files_path":
+                    Settings.change_temp_files_path(value)
+                case "temp_files_name":
+                    Settings.change_temp_files_name(value)
 
         return "changes have been made."
     
@@ -197,6 +212,8 @@ class Settings(object):
         Settings.write_to_settings("temp_dir", "temp_dir_name")
         Settings.write_to_settings(["default", "multi_sheet", "zip", "7zip", "tar"], "package_type_s")
         Settings.write_to_settings("default", "chosen_package")
+        Settings.write_to_settings("C:/Users/697/Documents", "temp_files_path")
+        Settings.write_to_settings("temp_files", "temp_files_name")
 
         return "default applied"
     
@@ -204,7 +221,11 @@ class Settings(object):
 class PackageSettings(object):
 
     @staticmethod
-    def manage_package(packaging: str = Settings.retrieve_settings('chosen_package')) -> PackageType:
+    def manage_package(packaging: str = None) -> PackageType:
+
+        if packaging is None:
+            packaging = Settings.retrieve_settings('chosen_package')
+
         match packaging:
             case "default":
                 return PackageType.DEFAULT

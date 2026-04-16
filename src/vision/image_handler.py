@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from core.exporter import Exporter
 from utils.settings import PackageSettings, PackageType
 
+MAX_KERNEL_LENGTH = 31
+
 class ImageHandler():
     def __init__(self):
         super().__init__()
@@ -133,35 +135,61 @@ class ImageHandler():
                 cv.imwrite(f"{config['save_location']}/{config['archive_name']}/piece_{row}_{col}-{count}{config['image_type']}", sub_image)
 
 
+    def gaussian_blur_effect(self, file: np.ndarray | str, config: dict):
+        if isinstance(file, str):
+            image = cv.imread(file)
+
+        if isinstance(file, np.ndarray):
+            image = file
+
+        for i in range(1, MAX_KERNEL_LENGTH, 2):
+            dst = cv.GaussianBlur(image, (i, i), 0)
+
+            return dst
+        
+    def median_blur_effect(self, file: np.ndarray | str, config: dict):
+        if isinstance(file, str):
+            image = cv.imread(file)
+
+        if isinstance(file, np.ndarray):
+            image = file
+
+        for i in range(1, MAX_KERNEL_LENGTH, 2):
+            dst = cv.medianBlur(image, i)
+
+            return dst
+
+
     def apply_effect_type(self, file: np.ndarray | str, config: dict, count: int = 0):
 
         match config['effect_type']:
             case "default":
                 pass
             case "grid":
-                self.grid_effect(file, config, count)
-            case "causianblur":
-                pass
+                self.grid_effect(file[:], config, count)
+                return file
+            case "gaussianblur":
+                return self.gaussian_blur_effect(file, config)
             case "medianblur":
-                pass
+                return self.median_blur_effect(file, config)
 
 
     def conversion(self, file: np.ndarray | str | list, config: dict) -> None:
 
         if isinstance(file, np.ndarray):
             image = self.apply_color_type(file[:], config)
-            self.apply_effect_type(image, config)
+            image = self.apply_effect_type(image, config)
             cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}{config['image_type']}", image)
 
         if isinstance(file, str):
             image = self.apply_color_type(file[:], config)
-            self.apply_effect_type(image, config)
+            image = self.apply_effect_type(image, config)
             cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}{config['image_type']}", image)
 
         if isinstance(file, list):
             for i in range(len(file)):
                 image = self.apply_color_type(file[i], config)
-                self.apply_effect_type(image, config, i)
+                image = self.apply_effect_type(image, config, i)
                 cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}-{i}{config['image_type']}", image)
 
         

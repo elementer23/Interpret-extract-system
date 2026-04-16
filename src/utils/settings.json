@@ -15,9 +15,11 @@
                 "(*.webp)",
                 "(*.pdf)",
                 "(*.dwg)",
-                "(*.zip)"
+                "(*.zip)",
+                "(*.tar)",
+                "(*.7zip)"
             ],
-            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)",
+            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7zip)",
             "custom_file_selection": "",
             "file_selection_name": "Default",
             "custom_file_selection_name": "",
@@ -30,7 +32,9 @@
                 "7zip",
                 "tar"
             ],
-            "chosen_package": "default"
+            "chosen_package": "default",
+            "temp_files_path": "C:/Users/697/Documents",
+            "temp_files_name": "temp_files"
         }
     ]
 }

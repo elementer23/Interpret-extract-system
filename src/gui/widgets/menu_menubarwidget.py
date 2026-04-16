@@ -1,7 +1,6 @@
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
 from PyQt6.QtWidgets import (QMenuBar, QStatusBar)
-from gui.widgets.dialog_insertsinglewidget import CustomDialog
 from gui.widgets.window_insertsinglewidget import InsertSingleFileWindow
 from gui.widgets.window_insertbulkwidget import InsertBulkFileWindow
 from gui.widgets.window_insertzipwidget import InsertZipFileWindow

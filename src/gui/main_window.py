@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
     def open_file_dialog(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)")
+        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7zip)")
 
         if dialog.exec():
             self.label.setText(self.file_name_list(dialog.selectedFiles()))
@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
             remove_file_button.setStatusTip("remove the chosen file.")
 
             open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.open_file(d))
-            export_file_button.clicked.connect(lambda checked, d=file["dir"]: self.export_file(d))
+            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.export_file(d, f))
             remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
 
             row.addWidget(checkbox)
@@ -216,22 +216,25 @@ class MainWindow(QMainWindow):
         image_context = custom.run(custom.handler, dir_list[:])
         ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
 
-    def export_file(self, dir):
-        dir_list = []
+    def export_file(self, dir, file):
+        file = file.split(".")[0]
+        dir_list, file_list = [], []
         dir_list.append(dir)
+        file_list.append(file)
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes, PackageSettings.manage_package())
+        Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def export_selected_files(self, dic_list: list):
-        dir_list = []
+        dir_list, file_list = [], []
         for n in dic_list:
             dir_list.append(n["dir"])
+            file_list.append(n["file"].split(".")[0])
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes, PackageSettings.manage_package())
+        Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def delete_file(self, dir, file):
         FileHandler().delete_file(dir)

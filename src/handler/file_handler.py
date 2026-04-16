@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from utils.utilities import BasicUtils
 import pathlib
+from utils.settings import Settings
 
 class FileHandler():
     def __init__(self):
@@ -28,39 +29,52 @@ class FileHandler():
                 context.image_s[i] = np_buffer
             doc.close()        
 
+    def formulate_files_dir(self) -> list:
+        path = Settings.retrieve_settings('temp_files_path')
+        path_name = Settings.retrieve_settings('temp_files_name')
+
+        return [path, path_name]
+
     def get_temp_files_dir(self):
-        path = "C:/Users/697/Documents/temp_files"
-        files = os.listdir(path)
+
+        path = self.formulate_files_dir()
+        f_path = f"{path[0]}/{path[1]}"
+        self.create_dir(path[0], path[1])
+
+        files = os.listdir(f_path)
         file_context = []
 
         for file in files:
-            full_path = f"C:/Users/697/Documents/temp_files/{file}"
+            full_path = f"{f_path}/{file}"
             file_context.append({"file": file, "dir": full_path})
 
         return file_context
     
     def copy_files(self, file_list: list):
-        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir="C:/Users/697/Documents/temp_files/"):
+        path = self.formulate_files_dir()
+        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{path[0]}/{path[1]}/"):
             for file in file_list:
                 source_file = Path(file)
-                target_dir = Path("C:/Users/697/Documents/temp_files/")
+                target_dir = Path(f"{path[0]}/{path[1]}/")
 
                 shutil.copy2(source_file, target_dir)
 
     def delete_file(self, file: str):
-        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir="C:/Users/697/Documents/temp_files/"):
+        path = self.formulate_files_dir()
+        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir=f"{path[0]}/{path[1]}/"):
             os.remove(file)
         else:
             print("Bestand bestaat niet")
 
     def delete_files(self, file_list: list):
-        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir="C:/Users/697/Documents/temp_files/"):
+        path = self.formulate_files_dir()
+        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{path[0]}/{path[1]}/"):
             for f in file_list:
                 os.remove(f)
         else:
             print("Bestand(en) bestaat niet")
 
-    def temp_dir(self, dir_path: str, dir_name: str) -> None:
+    def create_dir(self, dir_path: str, dir_name: str) -> None:
         if not pathlib.Path(f"{dir_path}/{dir_name}").is_dir():
             directory_path = pathlib.Path(f"{dir_path}/{dir_name}")
 

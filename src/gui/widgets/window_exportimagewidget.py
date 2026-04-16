@@ -70,7 +70,7 @@ class ExportImageWindow(QWidget):
 
         self.combobox_effect_type = QComboBox()
         self.combobox_effect_type.setHidden(True)
-        self.combobox_effect_type.addItems(["default", "grid", "causianblur", "medianblur"])
+        self.combobox_effect_type.addItems(["default", "grid", "gaussianblur", "medianblur"])
 
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
 
@@ -176,7 +176,7 @@ class ExportImageWindow(QWidget):
         convert_ops.update({"encryption": encryption})
         convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
 
-        FileHandler().temp_dir(convert_ops['save_location'], convert_ops['archive_name'])
+        FileHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
 
         c_file = FileHandler().conversion(self.files[:])
 

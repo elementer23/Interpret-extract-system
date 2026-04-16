@@ -21,7 +21,7 @@ class Exporter():
         self.dir_path = Settings.retrieve_settings('directory_path')
         self.dir_name = Settings.retrieve_settings('temp_dir_name')
 
-    def export_to_excel(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
+    def export_to_excel(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:
         wb = Workbook()
 
         package_type = package_type.value
@@ -30,8 +30,9 @@ class Exporter():
             for i, entry in enumerate(data_to_enter):
                 if i == 0:
                     ws = wb.active
+                    ws.title = f"{origin_file_s[i]}"
                 else:
-                    ws = wb.create_sheet()
+                    ws = wb.create_sheet(f"{origin_file_s[i]}")
 
                 headers = ["Type", "Text", "Left", "Top", "Width", "Height"]
                 ws.append(headers)
@@ -61,10 +62,10 @@ class Exporter():
 
                     ws.append(row)
 
-                wb.save(f"{self.dir_path}/{self.dir_name}/output{i}.xlsx")
+                wb.save(f"{self.dir_path}/{self.dir_name}/output{i}-{origin_file_s[i]}.xlsx")
 
 
-    def export_to_json(self, data_to_enter: list) -> None:
+    def export_to_json(self, data_to_enter: list, origin_file_s: list) -> None:
 
         for i, entry in enumerate(data_to_enter):
 
@@ -78,13 +79,13 @@ class Exporter():
                 "boundaries": boundaries
             }]}
 
-            file_path = f"{self.dir_path}/{self.dir_name}/output{i}.json"
+            file_path = f"{self.dir_path}/{self.dir_name}/output{i}-{origin_file_s[i]}.json"
 
             with open(file_path, "w", encoding='utf-8') as file:
                 json.dump(_json, file, ensure_ascii=False, indent=4)
 
 
-    def export_to_csv(self, data_to_enter: list) -> None:
+    def export_to_csv(self, data_to_enter: list, origin_file_s: list) -> None:
 
         for i, entry in enumerate(data_to_enter):
 
@@ -94,25 +95,25 @@ class Exporter():
                 dt = n.area_domain()
                 boundaries.append({"type": dt['type'], "text": dt['text'], "left": dt['left'], "top": dt['top'], "width": dt['width'], "height": dt['height']})
                 
-            with open(f"{self.dir_path}/{self.dir_name}/output{i}.csv", "w", newline='') as file:
+            with open(f"{self.dir_path}/{self.dir_name}/output{i}-{origin_file_s[i]}.csv", "w", newline='') as file:
                 fieldnames = ['type', 'text', 'left', 'top', 'width', 'height']
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writerows(boundaries)
 
     
-    def execute_export(self, data_to_enter: list, package_type: PackageType = PackageType.DEFAULT) -> None:
-        FileHandler().temp_dir(dir_path=self.dir_path, dir_name=self.dir_name)
+    def execute_export(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:
+        FileHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
 
         if len(Settings.retrieve_settings("chosen_export")) == 0:
-            self.export_to_excel(data_to_enter=data_to_enter, package_type=package_type)
+            self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
         
         match Settings.retrieve_settings("chosen_export"):
             case "excel":
-                self.export_to_excel(data_to_enter=data_to_enter, package_type=package_type)
+                self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
             case "json":
-                self.export_to_json(data_to_enter=data_to_enter)
+                self.export_to_json(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
             case "csv":
-                self.export_to_csv(data_to_enter=data_to_enter)
+                self.export_to_csv(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
 
         self.execute_package_export(dir_path=self.dir_path, dir_name=self.dir_name, package_type=package_type)
 
