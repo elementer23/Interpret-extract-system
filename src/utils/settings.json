@@ -3,11 +3,11 @@
         {
             "default_export": "excel",
             "export_options": [
-                "excel",
                 "json",
+                "excel",
                 "csv"
             ],
-            "chosen_export": "",
+            "chosen_export": "json",
             "file_selection_options": [
                 "(*.png)",
                 "(*.jpg)",
@@ -17,22 +17,22 @@
                 "(*.dwg)",
                 "(*.zip)",
                 "(*.tar)",
-                "(*.7zip)"
+                "(*.7z)"
             ],
-            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7zip)",
+            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)",
             "custom_file_selection": "",
             "file_selection_name": "Default",
             "custom_file_selection_name": "",
             "directory_path": "C:/Users/697/Documents",
-            "temp_dir_name": "temp_dir",
+            "temp_dir_name": "export",
             "package_type_s": [
-                "default",
+                "7zip",
                 "multi_sheet",
                 "zip",
-                "7zip",
+                "default",
                 "tar"
             ],
-            "chosen_package": "default",
+            "chosen_package": "7zip",
             "temp_files_path": "C:/Users/697/Documents",
             "temp_files_name": "temp_files"
         }

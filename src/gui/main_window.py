@@ -20,8 +20,10 @@ from vision.image_handler import ImageHandler
 from vision.text_handler import TextHandler
 import matplotlib.pyplot as plt
 from utils.settings import Settings, PackageSettings
+from core.decompress import Decompress
 from core.exporter import Exporter
 from gui.widgets.menu_menubarwidget import CustomMenu
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -54,10 +56,10 @@ class MainWindow(QMainWindow):
         self.add_button.setHidden(True)
         self.add_button.clicked.connect(self.add_files)
 
-        self.unzip_button = QPushButton("unzip content")
-        self.unzip_button.setStatusTip("unzip the files inside of the chosen zip folder.")
-        self.unzip_button.setHidden(True)
-        self.unzip_button.clicked.connect(self.unzip_zip)
+        self.decomp_button = QPushButton("decompress")
+        self.decomp_button.setStatusTip("decompress or basically unzip compressed folders.")
+        self.decomp_button.setHidden(True)
+        self.decomp_button.clicked.connect(self.decomp)
 
         self.update_list_button = QPushButton("update content")
         self.update_list_button.setStatusTip("update the content of the list to check for changes.")
@@ -85,7 +87,7 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.label, 1, 1)
         grid_layout.addWidget(self.button, 1, 2)
         grid_layout.addWidget(self.add_button, 1, 3)
-        grid_layout.addWidget(self.unzip_button, 1, 3)
+        grid_layout.addWidget(self.decomp_button, 1, 3)
         grid_layout.addWidget(self.main_checkbox, 2, 0)
         grid_layout.addWidget(self.update_list_button, 2, 1)
         grid_layout.addWidget(self.open_selected_button, 2, 2)
@@ -111,16 +113,16 @@ class MainWindow(QMainWindow):
     def open_file_dialog(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7zip)")
+        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)")
 
         if dialog.exec():
             self.label.setText(self.file_name_list(dialog.selectedFiles()))
             self.file_path = dialog.selectedFiles()
-            if BasicUtils.is_zip_present(self.file_path[:]):
-                self.unzip_button.setHidden(False)
+            if BasicUtils.compressed_file_present(self.file_path[:]):
+                self.decomp_button.setHidden(False)
                 self.add_button.setHidden(True)
             else:
-                self.unzip_button.setHidden(True)
+                self.decomp_button.setHidden(True)
                 self.add_button.setHidden(False)
 
     def add_files(self):
@@ -131,18 +133,14 @@ class MainWindow(QMainWindow):
             self.label.setText("Select...")
             self.dir_content()
 
-    def unzip_zip(self):
-        if BasicUtils.is_zip_present(self.file_path[:]):
-            zf = zipfile.ZipFile(f"{self.file_path[0]}", "r")
-            try:
-                zf.extractall(path="C:/Users/697/Documents/temp_files", pwd=None)
-            except:
-                print('Error')
-                pass
-            zf.close()
-            self.dir_content()
-            self.unzip_button.setHidden(True)
-            self.label.setText("Select...")
+    def decomp(self):
+        path = FileHandler().formulate_files_dir()
+        target_path = os.path.join(path[0], path[1])
+        Decompress(directory=target_path, file_s=self.file_path[:])
+
+        self.dir_content()
+        self.decomp_button.setHidden(True)
+        self.label.setText("Select...")
 
     def dir_content(self):
         all_files = FileHandler().get_temp_files_dir()
@@ -237,6 +235,9 @@ class MainWindow(QMainWindow):
         Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def delete_file(self, dir, file):
+        path = FileHandler().formulate_files_dir()
+        target_path = os.path.join(path[0], path[1])
+
         FileHandler().delete_file(dir)
         self.loaded_files.remove(file)
         correct_item = self.retrieve_widget_layout_in_scroll_view(label_name=file)
@@ -247,6 +248,11 @@ class MainWindow(QMainWindow):
                 child.widget().deleteLater()
 
         self.content_layout.removeItem(correct_item)
+
+        if BasicUtils.is_directory_empty(dir_path=target_path):
+            FileHandler().remove_dir(dir_path=target_path)
+            self.main_checkbox.setEnabled(False)
+            self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
     def retrieve_widget_layout_in_scroll_view(self, label_name: str):
         for i in reversed(range(self.content_layout.count() - 1)):
@@ -281,6 +287,8 @@ class MainWindow(QMainWindow):
                     item.itemAt(y).widget().setCheckState(get_checkstate)
 
     def delete_selected_files(self, dic_list: list):
+        path = FileHandler().formulate_files_dir()
+        target_path = os.path.join(path[0], path[1])
 
         dir_list, file_list = [],[]
 
@@ -313,6 +321,13 @@ class MainWindow(QMainWindow):
 
             self.selected_files_list.clear()
             self.delete_selected_button.setEnabled(False)
+            self.export_selected_button.setEnabled(False)
+            self.open_selected_button.setEnabled(False)
+            
+            if BasicUtils.is_directory_empty(dir_path=target_path):
+                FileHandler().remove_dir(dir_path=target_path)
+                self.main_checkbox.setEnabled(False)
+                self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
             
         else:
             print("not deleted")

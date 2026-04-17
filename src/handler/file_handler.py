@@ -38,21 +38,22 @@ class FileHandler():
     def get_temp_files_dir(self):
 
         path = self.formulate_files_dir()
-        f_path = f"{path[0]}/{path[1]}"
+        target_path = os.path.join(path[0], path[1])
         self.create_dir(path[0], path[1])
 
-        files = os.listdir(f_path)
+        files = os.listdir(target_path)
         file_context = []
 
         for file in files:
-            full_path = f"{f_path}/{file}"
+            full_path = os.path.join(target_path, file)
             file_context.append({"file": file, "dir": full_path})
 
         return file_context
     
     def copy_files(self, file_list: list):
         path = self.formulate_files_dir()
-        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{path[0]}/{path[1]}/"):
+        target_path = os.path.join(path[0], path[1])
+        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{target_path}/"):
             for file in file_list:
                 source_file = Path(file)
                 target_dir = Path(f"{path[0]}/{path[1]}/")
@@ -61,14 +62,16 @@ class FileHandler():
 
     def delete_file(self, file: str):
         path = self.formulate_files_dir()
-        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir=f"{path[0]}/{path[1]}/"):
+        target_path = os.path.join(path[0], path[1])
+        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir=f"{target_path}/"):
             os.remove(file)
         else:
             print("Bestand bestaat niet")
 
     def delete_files(self, file_list: list):
         path = self.formulate_files_dir()
-        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{path[0]}/{path[1]}/"):
+        target_path = os.path.join(path[0], path[1])
+        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{target_path}/"):
             for f in file_list:
                 os.remove(f)
         else:

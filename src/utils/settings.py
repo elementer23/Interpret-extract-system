@@ -43,7 +43,7 @@ class Settings(object):
         
         arr = []
         s = val.split()
-        s = BasicUtils.strip_all_except_letters(s)
+        s = BasicUtils.strip_special_characters(s)
 
         if Settings.is_applicable_file_type(s[:]):
             for n in s:
@@ -142,18 +142,18 @@ class Settings(object):
     @staticmethod
     def is_applicable_file_type(file_type_s: str | list) -> bool:
         n = file_type_s
-        arr = ["png", "jpg", "jpeg", "webp", "pdf", "dwg", "zip", "tar", "7zip"]
+        arr = ["png", "jpg", "jpeg", "webp", "pdf", "dwg", "zip", "tar", "7z"]
 
         if not n:
             return False
         
         if isinstance(n, str):
-            s = BasicUtils.strip_all_except_letters(n[:])
+            s = BasicUtils.strip_special_characters(n[:])
             
             return True if s in arr else False
         
         elif isinstance(n, list):
-            l = BasicUtils.strip_all_except_letters(n[:])
+            l = BasicUtils.strip_special_characters(n[:])
             for f in l:
                 if f not in arr:
                     return False

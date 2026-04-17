@@ -1,7 +1,10 @@
 import re
+import py7zr
 import zipfile
+import tarfile
 import warnings
 from pathlib import Path
+import os
 
 class BasicUtils(object):
 
@@ -42,6 +45,21 @@ class BasicUtils(object):
         for zip in val:
             if zipfile.is_zipfile(zip):
                 return True
+
+    @staticmethod
+    def compressed_file_present(val: list) -> bool:
+        if not val:
+            return None
+        
+        for c in val:
+            if zipfile.is_zipfile(c):
+                return True
+            elif tarfile.is_tarfile(c):
+                return True
+            elif py7zr.is_7zfile(c):
+                return True
+            else:
+                return False
             
     @staticmethod        
     def does_file_exist(file: str | None, file_list: list | None, file_dir: str) -> bool:
@@ -91,6 +109,26 @@ class BasicUtils(object):
             
             return arr
         
+
+    @staticmethod
+    def strip_special_characters(val: str | list) -> str | list:
+        arr = []
+        if not val:
+            return ""
+        
+        if isinstance(val, str):
+            result = re.sub(r'[^a-zA-Z0-9]', '', val)
+            result = result.lower()
+
+            return result
+        elif isinstance(val, list):
+            for n in val:
+                result = re.sub(r'[^a-zA-Z0-9]', '', n)
+                result = result.lower()
+                arr.append(result)
+
+            return arr
+        
     @staticmethod
     def first_upper_case(s: str) -> str:
         s = BasicUtils.strip_all_except_letters(s[:])
@@ -103,3 +141,13 @@ class BasicUtils(object):
 
         arr[0] = arr[0].upper()
         return ''.join(arr)
+    
+
+    @staticmethod
+    def is_directory_empty(dir_path: str) -> bool:
+        empty = True
+        for _ in os.scandir(dir_path):
+            empty = False
+            break
+
+        return True if empty else False
