@@ -5,7 +5,7 @@ import shutil
 from py7zr import pack_7zarchive, unpack_7zarchive
 from utils.settings import Settings
 from enumeration.package_type import PackageType
-from handler.file_handler import FileHandler
+from handler.file_handler import FileOsHandler
 
 #Register the package to prevent register and threading problems for later on.
 try:
@@ -102,7 +102,7 @@ class Exporter():
 
     
     def execute_export(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:
-        FileHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
+        FileOsHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
 
         if len(Settings.retrieve_settings("chosen_export")) == 0:
             self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
@@ -127,13 +127,13 @@ class Exporter():
         match package_type:
             case 0:
                 shutil.make_archive(base_name=directory, format="zip", root_dir=directory)
-                FileHandler().remove_dir(directory)
+                FileOsHandler().remove_dir(directory)
             case 1:
                 shutil.make_archive(base_name=directory, format="7zip", root_dir=directory)
-                FileHandler().remove_dir(directory)
+                FileOsHandler().remove_dir(directory)
             case 2: 
                 shutil.make_archive(base_name=directory, format="tar", root_dir=directory)
-                FileHandler().remove_dir(directory)
+                FileOsHandler().remove_dir(directory)
             case 3:
                 pass
             case 4:

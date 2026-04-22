@@ -4,6 +4,43 @@ from enumeration.package_type import PackageType
 import re
 from typing import Any
 
+_JSON = { "settings": [{
+            "default_export": "excel",
+            "export_options": [
+                "excel",
+                "json",
+                "csv"
+            ],
+            "chosen_export": "",
+            "file_selection_options": [
+                "(*.png)",
+                "(*.jpg)",
+                "(*.jpeg)",
+                "(*.webp)",
+                "(*.pdf)",
+                "(*.dwg)",
+                "(*.zip)",
+                "(*.tar)",
+                "(*.7z)"
+            ],
+            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)",
+            "custom_file_selection": "",
+            "file_selection_name": "Default",
+            "custom_file_selection_name": "",
+            "directory_path": "C:/Users/697/Documents",
+            "temp_dir_name": "temp_dir",
+            "package_type_s": [
+                "default",
+                "multi_sheet",
+                "zip",
+                "7zip",
+                "tar"
+            ],
+            "chosen_package": "default",
+            "temp_files_path": "C:/Users/697/Documents",
+            "temp_files_name": "temp_files"
+        }]}
+
 class Settings(object):
     
     @staticmethod
@@ -26,9 +63,10 @@ class Settings(object):
                 for n in data["settings"]:
                     return n[name] if name is not None else n
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, FileNotFoundError):
             print("Error: Failed to decode JSON from the file.")
-
+            if FileNotFoundError:
+                Settings.create_settings_if_not_exist()
     
     @staticmethod
     def change_chosen_export(chosen_export: str) -> None:
@@ -217,7 +255,16 @@ class Settings(object):
 
         return "default applied"
     
+    @staticmethod
+    def create_settings_if_not_exist() -> str:
+        try:
+            with open("../src/utils/settings.json", "w+") as new_file:
+                json.dump(_JSON, new_file, indent=4)
 
+        except json.JSONDecodeError:
+            print("Error: Failed to encode JSON to the file.")
+
+        
 class PackageSettings(object):
 
     @staticmethod

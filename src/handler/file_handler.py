@@ -3,7 +3,7 @@ import pymupdf
 import os
 import shutil
 from pathlib import Path
-from utils.utilities import BasicUtils
+from utils.utilities import BasicUtils, FileType
 import pathlib
 from utils.settings import Settings
 
@@ -28,6 +28,37 @@ class FileHandler():
 
                 context.image_s[i] = np_buffer
             doc.close()        
+
+    def conversion(self, file_s: list) -> list:
+        arr = []
+        for i in range(len(file_s)):
+            if BasicUtils.categorize_file_type(file_s[i]) is FileType.IMAGE:
+                arr.append(file_s[i])
+                continue
+
+            doc = pymupdf.open(file_s[i])
+            for page in doc:
+                zoom = 300 / 72
+                mat = pymupdf.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat)
+
+                np_buffer = np.frombuffer(pix.samples, dtype=np.uint8)
+
+                if pix.n == 4:
+                    np_buffer = np_buffer.reshape(pix.height, pix.width, 4)
+                else:
+                    np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
+
+                arr.append(np_buffer)
+
+            doc.close()
+
+        return arr        
+    
+
+class FileOsHandler():
+    def __init__(self):
+        super().__init__()
 
     def formulate_files_dir(self) -> list:
         path = Settings.retrieve_settings('temp_files_path')
@@ -100,24 +131,13 @@ class FileHandler():
 
         pathlib.Path(dir_path).rmdir()
 
-    def conversion(self, file_s: list) -> list:
-        arr = []
-        for i in range(len(file_s)):
-            doc = pymupdf.open(file_s[i])
-            for page in doc:
-                zoom = 300 / 72
-                mat = pymupdf.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
+    def get_files_from_dir(self, target_path: str) -> list[str]:
+        if pathlib.Path(f"{target_path}").is_dir():
+            arr = []
+            files = os.listdir(target_path)
 
-                np_buffer = np.frombuffer(pix.samples, dtype=np.uint8)
+            for file in files:
+                file_path = os.path.join(target_path, file)
+                arr.append(file_path)
 
-                if pix.n == 4:
-                    np_buffer = np_buffer.reshape(pix.height, pix.width, 4)
-                else:
-                    np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
-
-                arr.append(np_buffer)
-
-            doc.close()
-
-        return arr        
+            return None if not arr else arr

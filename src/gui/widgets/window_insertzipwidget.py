@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QFileDialog
 )
 
-from handler.file_handler import FileHandler
+from handler.file_handler import FileHandler, FileOsHandler
 
 class InsertZipFileWindow(QWidget):
     def __init__(self):
@@ -94,7 +94,7 @@ class InsertZipFileWindow(QWidget):
             zf.close()
 
     def dir_content(self):
-        files = FileHandler().get_temp_files_dir()
+        files = FileOsHandler().get_temp_files_dir()
 
         for i in reversed(range(self.content_layout.count())):
             widget = self.content_layout.itemAt(i).widget()

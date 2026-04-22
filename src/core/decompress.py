@@ -4,7 +4,7 @@ from py7zr import WriterFactory, Py7zIO
 import zipfile
 import tarfile
 import os
-from handler.file_handler import FileHandler
+from handler.file_handler import FileOsHandler
 
 BLOCK_SIZE = 1024
 
@@ -56,8 +56,8 @@ class Decompress():
         pass
 
     def extract(self):
-        path = FileHandler().formulate_files_dir()
-        FileHandler().create_dir(path[0], path[1])
+        path = FileOsHandler().formulate_files_dir()
+        FileOsHandler().create_dir(path[0], path[1])
 
         if not self.check_validity():
             return None

@@ -1,6 +1,5 @@
 from PyQt6.QtCore import QSize, Qt, QFileInfo
 from utils.utilities import BasicUtils
-import zipfile
 from PyQt6.QtWidgets import (
     QMainWindow,
     QVBoxLayout,
@@ -15,10 +14,8 @@ from PyQt6.QtWidgets import (
     QMessageBox
     )
 from handler.main_handler import Handler
-from handler.file_handler import FileHandler
+from handler.file_handler import FileHandler, FileOsHandler
 from vision.image_handler import ImageHandler
-from vision.text_handler import TextHandler
-import matplotlib.pyplot as plt
 from utils.settings import Settings, PackageSettings
 from core.decompress import Decompress
 from core.exporter import Exporter
@@ -111,9 +108,10 @@ class MainWindow(QMainWindow):
         self.dir_content()
 
     def open_file_dialog(self):
+        filter = Settings.retrieve_settings()
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)")
+        dialog.setNameFilter(f"{filter['file_selection_name']} {filter['default_file_selection']}")
 
         if dialog.exec():
             self.label.setText(self.file_name_list(dialog.selectedFiles()))
@@ -129,12 +127,12 @@ class MainWindow(QMainWindow):
         if not self.add_button.isHidden():
             self.add_button.setHidden(True)
 
-            FileHandler().copy_files(self.file_path[:])
+            FileOsHandler().copy_files(self.file_path[:])
             self.label.setText("Select...")
             self.dir_content()
 
     def decomp(self):
-        path = FileHandler().formulate_files_dir()
+        path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
         Decompress(directory=target_path, file_s=self.file_path[:])
 
@@ -143,7 +141,7 @@ class MainWindow(QMainWindow):
         self.label.setText("Select...")
 
     def dir_content(self):
-        all_files = FileHandler().get_temp_files_dir()
+        all_files = FileOsHandler().get_temp_files_dir()
         new_files = [f for f in all_files if f["file"] not in self.loaded_files]
 
         if not all_files and self.content_layout.count() <= 1:
@@ -235,10 +233,10 @@ class MainWindow(QMainWindow):
         Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def delete_file(self, dir, file):
-        path = FileHandler().formulate_files_dir()
+        path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
-        FileHandler().delete_file(dir)
+        FileOsHandler().delete_file(dir)
         self.loaded_files.remove(file)
         correct_item = self.retrieve_widget_layout_in_scroll_view(label_name=file)
 
@@ -250,7 +248,7 @@ class MainWindow(QMainWindow):
         self.content_layout.removeItem(correct_item)
 
         if BasicUtils.is_directory_empty(dir_path=target_path):
-            FileHandler().remove_dir(dir_path=target_path)
+            FileOsHandler().remove_dir(dir_path=target_path)
             self.main_checkbox.setEnabled(False)
             self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
@@ -287,7 +285,7 @@ class MainWindow(QMainWindow):
                     item.itemAt(y).widget().setCheckState(get_checkstate)
 
     def delete_selected_files(self, dic_list: list):
-        path = FileHandler().formulate_files_dir()
+        path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
         dir_list, file_list = [],[]
@@ -307,7 +305,7 @@ class MainWindow(QMainWindow):
 
         if button == QMessageBox.StandardButton.Yes:
             
-            FileHandler().delete_files(dir_list)
+            FileOsHandler().delete_files(dir_list)
             for n in file_list:
                 self.loaded_files.remove(n)
                 correct_widget = self.retrieve_widget_layout_in_scroll_view(label_name=n)
@@ -325,7 +323,7 @@ class MainWindow(QMainWindow):
             self.open_selected_button.setEnabled(False)
             
             if BasicUtils.is_directory_empty(dir_path=target_path):
-                FileHandler().remove_dir(dir_path=target_path)
+                FileOsHandler().remove_dir(dir_path=target_path)
                 self.main_checkbox.setEnabled(False)
                 self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
             

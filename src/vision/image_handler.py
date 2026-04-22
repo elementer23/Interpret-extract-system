@@ -4,7 +4,7 @@ from PIL import Image
 import pymupdf
 import matplotlib.pyplot as plt
 from core.exporter import Exporter
-from utils.settings import PackageSettings, PackageType
+from utils.settings import PackageSettings
 
 MAX_KERNEL_LENGTH = 31
 
@@ -64,7 +64,11 @@ class ImageHandler():
 
         doc.close()
 
-    
+
+class ImageExportHandler():
+    def __init__(self):
+        super().__init__()
+
     def read_to_color(self, file: np.ndarray | str):
         if isinstance(file, str):
             image_color = cv.imread(file, cv.IMREAD_COLOR)
@@ -164,7 +168,7 @@ class ImageHandler():
 
         match config['effect_type']:
             case "default":
-                pass
+                return file
             case "grid":
                 self.grid_effect(file[:], config, count)
                 return file
@@ -194,6 +198,3 @@ class ImageHandler():
 
         
         Exporter().execute_package_export(config['save_location'], config['archive_name'], PackageSettings.manage_package(config['export_type']))
-
-
-

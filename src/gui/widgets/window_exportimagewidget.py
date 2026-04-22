@@ -6,17 +6,18 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QFileDialog,
-    QMessageBox,
     QComboBox,
     QLineEdit,
     QGroupBox,
     QFormLayout,
-    QHBoxLayout,
     QCheckBox
 )
-from handler.file_handler import FileHandler
-from vision.image_handler import ImageHandler
+from handler.file_handler import FileHandler, FileOsHandler
+from vision.image_handler import ImageExportHandler
 from utils.settings import Settings
+from utils.utilities import BasicUtils, FileType
+from core.decompress import Decompress
+import os
 
 class ExportImageWindow(QWidget):
     def __init__(self):
@@ -134,9 +135,10 @@ class ExportImageWindow(QWidget):
 
 
     def open_dir(self):
+        filter = Settings.retrieve_settings()
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        dialog.setNameFilter("Default (*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip)")
+        dialog.setNameFilter(f"{filter['file_selection_name']} {filter['default_file_selection']}")
 
         if dialog.exec():
             self.label.setText(f"Selected: {self.file_name_list(dialog.selectedFiles())}")
@@ -176,12 +178,27 @@ class ExportImageWindow(QWidget):
         convert_ops.update({"encryption": encryption})
         convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
 
-        FileHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
+        FileOsHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
 
-        c_file = FileHandler().conversion(self.files[:])
+        if BasicUtils.compressed_file_present(self.files[:]):
+            FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
+            target_path = os.path.join(convert_ops['save_location'], "temp_export")
+            Decompress(directory=target_path, file_s=self.files[:])
 
-        ImageHandler().conversion(c_file, convert_ops)
+            files = FileOsHandler().get_files_from_dir(target_path=target_path)
 
+            compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
+
+            c_file = FileHandler().conversion(compatible_files)
+            ImageExportHandler().conversion(c_file, convert_ops)
+
+            FileOsHandler().remove_dir(target_path)
+
+        else:
+            compatible_files = BasicUtils.maintain_compatible_extensions(self.files[:], FileType.PDF, FileType.IMAGE)
+            c_file = FileHandler().conversion(compatible_files)
+            ImageExportHandler().conversion(c_file, convert_ops)
+        
 
     def file_name_list(self, file_list):
         list = []
