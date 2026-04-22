@@ -5,6 +5,7 @@ import zipfile
 import tarfile
 import os
 from handler.file_handler import FileOsHandler
+from utils.utilities import BasicUtils, FileType
 
 BLOCK_SIZE = 1024
 
@@ -62,19 +63,25 @@ class Decompress():
         if not self.check_validity():
             return None
         
+        extensions = [FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION]
+
         try:
-            for file in self.file_s:
-                for opt in self.check_validity():
-                    match opt:
-                        case "zip":
-                            if zipfile.is_zipfile(file):
-                                self.zip_extract()
-                        case "tar":
-                            if tarfile.is_tarfile(file):
-                                self.tar_extract()
-                        case "7zip":
-                            if py7zr.is_7zfile(file):
-                                self.py7zip_extract()
+            library = self.check_validity() if isinstance(self.check_validity(), dict) else False
+            if not library:
+                return
+            
+            for key, value in library.items():
+                match key:
+                    case "zip":
+                            self.zip_extract(value)
+                    case "tar":
+                            self.tar_extract(value)
+                    case "7zip":
+                            self.py7zip_extract(value)
+                    case "non-compressed":
+                        for i in range(len(value)):
+                            if BasicUtils.categorize_file_type(value[i]) in extensions:
+                                FileOsHandler().copy_files(value[i])
 
         except Exception as ex:
             print("Exception:", ex)
@@ -82,13 +89,13 @@ class Decompress():
 
 
     def check_validity(self):
-        arr = []
+        library = {"zip": [], "7zip": [], "tar": [], "non-compressed": []}
         for file in self.file_s:
             if zipfile.is_zipfile(file):
                 try:
                     with zipfile.ZipFile(file) as z:
                         if z.testzip() is None:
-                            arr.append("zip")
+                            library['zip'].append(file)
                             continue
                 except Exception: pass
 
@@ -96,19 +103,23 @@ class Decompress():
                 try:
                     with py7zr.SevenZipFile(file) as s:
                         s.test()
-                        arr.append("7zip")
+                        library["7zip"].append(file)
                         continue
                 except Exception: pass
 
             if tarfile.is_tarfile(file):
                 if self.test_tar(file) is None:
-                    arr.append("tar")
+                    library["tar"].append(file)
                     continue
+
+            if BasicUtils.categorize_file_type(file) is FileType.PDF or FileType.IMAGE or FileType.TEMPLATE_EXTENSION or FileType.TEXT_EXTENSION:
+                library["non-compressed"].append(file)
+                continue
 
             print(f"File {file} is invalid.")
             return False
-        
-        return arr if arr else False
+    
+        return library if library else False
             
     def test_tar(self, file_path: str | bytes) -> str | None:
         try:
@@ -128,8 +139,8 @@ class Decompress():
             return "Archive Header Corrupt"
         
 
-    def zip_extract(self):
-        for file in self.file_s:
+    def zip_extract(self, file_list: list):
+        for file in file_list:
             try:
                 with zipfile.ZipFile(file, 'r') as z:
                     for member in z.infolist():
@@ -149,18 +160,18 @@ class Decompress():
 
             except Exception: pass
 
-    def py7zip_extract(self):
+    def py7zip_extract(self, file_list: list):
         factory = _FlatWriterFactory(self.directory)
 
-        for file in self.file_s:
+        for file in file_list:
             try:
                 with py7zr.SevenZipFile(file, 'r') as s:
                     s.extract(factory=factory)
 
             except Exception: pass
 
-    def tar_extract(self):
-        for file in self.file_s:
+    def tar_extract(self, file_list: list):
+        for file in file_list:
             try:
                 with tarfile.open(file, 'r:*') as tar:
                     for member in tar.getmembers():

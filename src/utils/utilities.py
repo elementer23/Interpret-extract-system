@@ -61,34 +61,16 @@ class BasicUtils(object):
             else:
                 return False
             
-    @staticmethod        
-    def does_file_exist(file: str | None, file_list: list | None, file_dir: str) -> bool:
-        if file is None and file_list is None and not file_dir:
-            return True
+    @staticmethod
+    def does_file_exist(file_data: str | None, target_directory: str) -> bool | None:
+        if not file_data or file_data is None or not target_directory:
+            return None
         
-        if not file_dir:
-            return True
-        
-        if file_list is None or not file_list:
-            source_file = Path(file)
-            target_dir = Path(file_dir)
-            target_file = target_dir / source_file.name
-            
-            if target_file.exists():
-                return True
-            else:
-                return False
+        source_file = Path(file_data)
+        target_dir = Path(target_directory)
+        target_file = target_dir / source_file.name
 
-        if file is None or not file:
-            for files in file_list:
-                source_file = Path(files)
-                target_dir = Path(file_dir)
-                target_file = target_dir / source_file.name
-
-                if target_file.exists():
-                    return True
-                else:
-                    return False
+        return True if target_file.exists() else False
                 
     @staticmethod
     def strip_all_except_letters(val: str | list) -> str | list:

@@ -179,26 +179,17 @@ class ExportImageWindow(QWidget):
         convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
 
         FileOsHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
+        FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
+        target_path = os.path.join(convert_ops['save_location'], "temp_export")
 
-        if BasicUtils.compressed_file_present(self.files[:]):
-            FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
-            target_path = os.path.join(convert_ops['save_location'], "temp_export")
-            Decompress(directory=target_path, file_s=self.files[:])
+        Decompress(directory=target_path, file_s=self.files[:])
+        files = FileOsHandler().get_files_from_dir(target_path=target_path)
+        compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
 
-            files = FileOsHandler().get_files_from_dir(target_path=target_path)
+        c_file = FileHandler().conversion(compatible_files)
+        ImageExportHandler().conversion(c_file, convert_ops)
 
-            compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
-
-            c_file = FileHandler().conversion(compatible_files)
-            ImageExportHandler().conversion(c_file, convert_ops)
-
-            FileOsHandler().remove_dir(target_path)
-
-        else:
-            compatible_files = BasicUtils.maintain_compatible_extensions(self.files[:], FileType.PDF, FileType.IMAGE)
-            c_file = FileHandler().conversion(compatible_files)
-            ImageExportHandler().conversion(c_file, convert_ops)
-        
+        FileOsHandler().remove_dir(target_path)
 
     def file_name_list(self, file_list):
         list = []

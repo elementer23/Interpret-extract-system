@@ -157,7 +157,7 @@ class SettingsWindow(QWidget):
     def apply_settings(self):
         if not self.settings:
             return
-        
+
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Changes")
         dlg.setText("Are you sure you want to change your settings?")

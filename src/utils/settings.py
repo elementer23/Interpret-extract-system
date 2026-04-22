@@ -28,7 +28,7 @@ _JSON = { "settings": [{
             "file_selection_name": "Default",
             "custom_file_selection_name": "",
             "directory_path": "C:/Users/697/Documents",
-            "temp_dir_name": "temp_dir",
+            "temp_dir_name": "export_container",
             "package_type_s": [
                 "default",
                 "multi_sheet",
@@ -38,7 +38,7 @@ _JSON = { "settings": [{
             ],
             "chosen_package": "default",
             "temp_files_path": "C:/Users/697/Documents",
-            "temp_files_name": "temp_files"
+            "temp_files_name": "file_container"
         }]}
 
 class Settings(object):
@@ -247,11 +247,11 @@ class Settings(object):
         Settings.write_to_settings("", "custom_file_selection")
         Settings.write_to_settings("", "custom_file_selection_name")
         Settings.write_to_settings("C:/Users/697/Documents", "directory_path")
-        Settings.write_to_settings("temp_dir", "temp_dir_name")
+        Settings.write_to_settings("export_container", "temp_dir_name")
         Settings.write_to_settings(["default", "multi_sheet", "zip", "7zip", "tar"], "package_type_s")
         Settings.write_to_settings("default", "chosen_package")
         Settings.write_to_settings("C:/Users/697/Documents", "temp_files_path")
-        Settings.write_to_settings("temp_files", "temp_files_name")
+        Settings.write_to_settings("file_container", "temp_files_name")
 
         return "default applied"
     

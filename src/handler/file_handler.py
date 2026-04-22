@@ -81,20 +81,35 @@ class FileOsHandler():
 
         return file_context
     
-    def copy_files(self, file_list: list):
+    def copy_files(self, file_data: str | list):
+        if not file_data:
+            return
+        
         path = self.formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
-        if not BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{target_path}/"):
-            for file in file_list:
-                source_file = Path(file)
-                target_dir = Path(f"{path[0]}/{path[1]}/")
+        try:
+            if isinstance(file_data, str):
+                if not BasicUtils.does_file_exist(file_data, target_directory=f"{target_path}/"):
+                    source_file = Path(file_data)
+                    target_dir = Path(f"{path[0]}/{path[1]}/")
 
-                shutil.copy2(source_file, target_dir)
+                    shutil.copy2(source_file, target_dir)
+
+            if isinstance(file_data, list):
+                for file in file_data:
+                    if not BasicUtils.does_file_exist(file, target_directory=f"{target_path}/"):
+                        source_file = Path(file)
+                        target_dir = Path(f"{path[0]}/{path[1]}/")
+
+                        shutil.copy2(source_file, target_dir)
+
+        except Exception as ex:
+            print("Exception:", ex)
 
     def delete_file(self, file: str):
         path = self.formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
-        if BasicUtils.does_file_exist(file=file, file_list=None, file_dir=f"{target_path}/"):
+        if BasicUtils.does_file_exist(file, target_directory=f"{target_path}/"):
             os.remove(file)
         else:
             print("Bestand bestaat niet")
@@ -102,12 +117,10 @@ class FileOsHandler():
     def delete_files(self, file_list: list):
         path = self.formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
-        if BasicUtils.does_file_exist(file=None, file_list=file_list, file_dir=f"{target_path}/"):
-            for f in file_list:
+        for f in file_list:
+            if BasicUtils.does_file_exist(f, target_directory=f"{target_path}/"):
                 os.remove(f)
-        else:
-            print("Bestand(en) bestaat niet")
-
+        
     def create_dir(self, dir_path: str, dir_name: str) -> None:
         if not pathlib.Path(f"{dir_path}/{dir_name}").is_dir():
             directory_path = pathlib.Path(f"{dir_path}/{dir_name}")
@@ -141,3 +154,32 @@ class FileOsHandler():
                 arr.append(file_path)
 
             return None if not arr else arr
+        
+
+    def renew_copies_in_dir(self, target_path: str, files_to_check: list):
+        try:
+            messages = []
+            count = 0
+            currently_in_dir = self.get_files_from_dir(target_path=target_path)
+
+            if not files_to_check:
+                messages.append("There were no files to check.")
+                raise Exception
+
+            if currently_in_dir is None:
+                self.copy_files(files_to_check)
+
+            file_names_in_dir = [os.path.basename(file) for file in currently_in_dir]
+            file_names_in_given_list = [os.path.basename(file) for file in files_to_check]
+
+            print(file_names_in_dir)
+            print(file_names_in_given_list)
+            for file in file_names_in_given_list:
+                if file in file_names_in_dir:
+                    count = count + 1
+
+            print(count)
+
+        except Exception:
+            print(messages)
+

@@ -48,13 +48,8 @@ class MainWindow(QMainWindow):
         self.button.setStatusTip("select the files to be added.")
         self.button.clicked.connect(self.open_file_dialog)
 
-        self.add_button = QPushButton("add file(s)")
-        self.add_button.setStatusTip("add the selected files.")
-        self.add_button.setHidden(True)
-        self.add_button.clicked.connect(self.add_files)
-
-        self.decomp_button = QPushButton("decompress")
-        self.decomp_button.setStatusTip("decompress or basically unzip compressed folders.")
+        self.decomp_button = QPushButton("add file(s)")
+        self.decomp_button.setStatusTip("add files whether from compressed folders or loose instances.")
         self.decomp_button.setHidden(True)
         self.decomp_button.clicked.connect(self.decomp)
 
@@ -83,7 +78,6 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(QLabel("File(s):"), 1, 0)
         grid_layout.addWidget(self.label, 1, 1)
         grid_layout.addWidget(self.button, 1, 2)
-        grid_layout.addWidget(self.add_button, 1, 3)
         grid_layout.addWidget(self.decomp_button, 1, 3)
         grid_layout.addWidget(self.main_checkbox, 2, 0)
         grid_layout.addWidget(self.update_list_button, 2, 1)
@@ -116,20 +110,7 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             self.label.setText(self.file_name_list(dialog.selectedFiles()))
             self.file_path = dialog.selectedFiles()
-            if BasicUtils.compressed_file_present(self.file_path[:]):
-                self.decomp_button.setHidden(False)
-                self.add_button.setHidden(True)
-            else:
-                self.decomp_button.setHidden(True)
-                self.add_button.setHidden(False)
-
-    def add_files(self):
-        if not self.add_button.isHidden():
-            self.add_button.setHidden(True)
-
-            FileOsHandler().copy_files(self.file_path[:])
-            self.label.setText("Select...")
-            self.dir_content()
+            self.decomp_button.setHidden(False)
 
     def decomp(self):
         path = FileOsHandler().formulate_files_dir()
@@ -198,7 +179,8 @@ class MainWindow(QMainWindow):
 
         custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
         image_context = custom.run(custom.handler, dir_list[:])
-        ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+        if context is not None and image_context is not None:
+            ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
 
     def open_selected_files(self, dic_list: list):
         dir_list = []
@@ -210,7 +192,8 @@ class MainWindow(QMainWindow):
 
         custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
         image_context = custom.run(custom.handler, dir_list[:])
-        ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+        if context is not None and image_context is not None:
+            ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
 
     def export_file(self, dir, file):
         file = file.split(".")[0]
@@ -220,7 +203,8 @@ class MainWindow(QMainWindow):
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+        if context is not None:
+            Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def export_selected_files(self, dic_list: list):
         dir_list, file_list = [], []
@@ -230,7 +214,8 @@ class MainWindow(QMainWindow):
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
         context = builder.run(builder.handler, dir_list[:])
-        Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+        if context is not None:
+            Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
 
     def delete_file(self, dir, file):
         path = FileOsHandler().formulate_files_dir()
@@ -238,6 +223,9 @@ class MainWindow(QMainWindow):
 
         FileOsHandler().delete_file(dir)
         self.loaded_files.remove(file)
+        if {"dir": dir, "file": file} in self.selected_files_list:
+            self.selected_files_list.remove({"dir": dir, "file": file})
+
         correct_item = self.retrieve_widget_layout_in_scroll_view(label_name=file)
 
         while correct_item.count():
@@ -246,6 +234,11 @@ class MainWindow(QMainWindow):
                 child.widget().deleteLater()
 
         self.content_layout.removeItem(correct_item)
+
+        if not self.selected_files_list:
+            self.delete_selected_button.setEnabled(False)
+            self.export_selected_button.setEnabled(False)
+            self.open_selected_button.setEnabled(False)
 
         if BasicUtils.is_directory_empty(dir_path=target_path):
             FileOsHandler().remove_dir(dir_path=target_path)
@@ -263,9 +256,9 @@ class MainWindow(QMainWindow):
 
     def check_box_checked(self, dir, file, checked):
         if Qt.CheckState(checked) == Qt.CheckState.Checked:
-            self.selected_files_list.append({"checked": True, "dir": dir, "file": file})
+            self.selected_files_list.append({"dir": dir, "file": file})
         else:
-            self.selected_files_list.remove({"checked": True, "dir": dir, "file": file})
+            self.selected_files_list.remove({"dir": dir, "file": file})
 
         check_handler = len(self.selected_files_list) > 0
 

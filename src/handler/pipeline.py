@@ -16,22 +16,30 @@ class Pipeline():
             self.handler = args
 
     def run(self, class_handlers, data):
-        if data is None:
-            return "A list of files wasn't given."
+        try:
+
+            if data is None:
+                raise Exception
+            
+            pdf_arr = []
+            file_type_list = u.categorize_file_type(data)
+
+            for i in range(len(file_type_list)):
+                if file_type_list[i] is FileType.PDF:
+                    pdf_arr.append(data[i])
+
+            if not pdf_arr:
+                raise Exception
+            
+            context = PipeContext(pdf_arr[:])
+            context.text_handler_present = u.is_class_present(class_handlers, TextHandler)
+
+        except Exception:
+            print("The file or files weren't compatible extensions, choose a pdf instead.")
+            return None
+        else:
+            for handler in class_handlers:
+                handler.process(context)
+            return context
+
         
-        pdf_arr = []
-        file_type_list = u.categorize_file_type(data)
-
-        for i in range(len(file_type_list)):
-            if file_type_list[i] is FileType.PDF:
-                pdf_arr.append(data[i])
-
-        if not pdf_arr:
-            return "There were no pdf's present inside of the list."
-
-        context = PipeContext(pdf_arr[:])
-        context.text_handler_present = u.is_class_present(class_handlers, TextHandler)
-
-        for handler in class_handlers:
-            handler.process(context)
-        return context
