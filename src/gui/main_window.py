@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, Qt, QFileInfo
+from PyQt6.QtCore import QSize, Qt, QFileInfo, QMutex, QMutexLocker
 from utils.utilities import BasicUtils
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -21,10 +21,15 @@ from core.decompress import Decompress
 from core.exporter import Exporter
 from gui.widgets.menu_menubarwidget import CustomMenu
 import os
+from gui.widgets.window_showplotwidget import PlotWindow
+from gui.events.thread_handler import ThreadHandler
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.lock = QMutex()
+        self.active_files = set()
+        self.windows = []
         self.setWindowTitle("interpret & extract")
 
         self.setMinimumSize(QSize(600, 500))
@@ -65,12 +70,12 @@ class MainWindow(QMainWindow):
         self.export_selected_button = QPushButton("export selected")
         self.export_selected_button.setStatusTip("export the selected files in accordance with the chosen settings.")
         self.export_selected_button.setEnabled(False)
-        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.export_selected_files(sfl))
+        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.export_selected_files, None, sfl))
 
         self.open_selected_button = QPushButton("open selected")
         self.open_selected_button.setStatusTip("open the selected files as images with bounding boxes drawn in them.")
         self.open_selected_button.setEnabled(False)
-        self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.open_selected_files(sfl))
+        self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.open_selected_files, self.show_plot_window, sfl))
 
         self.main_checkbox = QCheckBox()
         self.main_checkbox.stateChanged.connect( lambda checked: self.handle_checkbox_state(checked))
@@ -100,6 +105,12 @@ class MainWindow(QMainWindow):
         main_widget.setLayout(main_layout)
 
         self.dir_content()
+
+        self.threadhandler = ThreadHandler()
+
+    def run_func(self, fn, fn_out, *args, **kwargs):
+        kwargs.get("thread_id", 0)
+        self.threadhandler.run_event(fn, fn_out, args, kwargs)
 
     def open_file_dialog(self):
         filter = Settings.retrieve_settings()
@@ -151,8 +162,8 @@ class MainWindow(QMainWindow):
             remove_file_button = QPushButton("delete file")
             remove_file_button.setStatusTip("remove the chosen file.")
 
-            open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.open_file(d))
-            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.export_file(d, f))
+            open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.run_func(self.open_file, self.show_plot_window, d))
+            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.run_func(self.export_file, None, d, f))
             remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
 
             row.addWidget(checkbox)
@@ -170,56 +181,142 @@ class MainWindow(QMainWindow):
             self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
 
-    def open_file(self, dir):
+    def open_file(self, dir, progress_callback, thread_id):
+
         dir_list = []
-        dir_list.append(dir)
+        data = dir[0][0] if isinstance(dir, tuple) else dir
+        dir_list.append(data)
 
-        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        context = builder.run(builder.handler, dir_list[:])
+        with QMutexLocker(self.lock):
+                self.active_files.add(data)
 
-        custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-        image_context = custom.run(custom.handler, dir_list[:])
-        if context is not None and image_context is not None:
-            ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+        try:
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            context = builder.run(builder.handler, dir_list[:])
 
-    def open_selected_files(self, dic_list: list):
+            custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
+            image_context = custom.run(custom.handler, dir_list[:])
+            plot_data = []
+            if context is not None and image_context is not None:
+                plot_data = ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+
+            self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+
+            return plot_data
+        finally:
+            with QMutexLocker(self.lock):
+                if data in self.active_files:
+                    self.active_files.remove(data)
+        
+
+    def show_plot_window(self, data):
+        try:
+            if data:
+                plot_window = ""
+                for f in data[:]:
+                    plot_window = PlotWindow(f)
+                    self.windows.append(plot_window)
+                    plot_window.show()
+
+                plot_window.destroyed.connect(lambda: self.windows.remove(plot_window))
+        except ValueError: pass
+
+    def open_selected_files(self, dic_list, progress_callback, thread_id):
         dir_list = []
-        for n in dic_list:
+        data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
+ 
+        for n in data:
             dir_list.append(n["dir"])
+            with QMutexLocker(self.lock):
+                self.active_files.add(n["dir"])
 
-        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        context = builder.run(builder.handler, dir_list[:])
+        try:
+             
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            context = builder.run(builder.handler, dir_list[:])
 
-        custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-        image_context = custom.run(custom.handler, dir_list[:])
-        if context is not None and image_context is not None:
-            ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
+            custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
+            image_context = custom.run(custom.handler, dir_list[:])
+            plot_data = []
+            if context is not None and image_context is not None:
+                plot_data = ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
 
-    def export_file(self, dir, file):
+            self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+
+            return plot_data
+
+        finally:
+            with QMutexLocker(self.lock):
+                for f in data:
+                    if f['dir'] in self.active_files:
+                        self.active_files.remove(f['dir'])
+       
+
+    def export_file(self, file_data, progress_callback, thread_id):
+        data, _ = file_data
+        dir, file = data
+
         file = file.split(".")[0]
         dir_list, file_list = [], []
         dir_list.append(dir)
         file_list.append(file)
 
-        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        context = builder.run(builder.handler, dir_list[:])
-        if context is not None:
-            Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+        with QMutexLocker(self.lock):
+            self.active_files.add(dir)
 
-    def export_selected_files(self, dic_list: list):
+        try:
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            context = builder.run(builder.handler, dir_list[:])
+            if context is not None:
+                Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+
+            self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+
+            return file_list
+        
+        finally:
+            with QMutexLocker(self.lock):
+                if dir in self.active_files:
+                    self.active_files.remove(dir)
+        
+
+    def export_selected_files(self, dic_list, progress_callback, thread_id):
+
+        data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
         dir_list, file_list = [], []
-        for n in dic_list:
+        for n in data:
             dir_list.append(n["dir"])
             file_list.append(n["file"].split(".")[0])
 
-        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
-        context = builder.run(builder.handler, dir_list[:])
-        if context is not None:
-            Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+            with QMutexLocker(self.lock):
+                self.active_files.add(n["dir"])
+
+        try:
+
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
+            context = builder.run(builder.handler, dir_list[:])
+            if context is not None:
+                Exporter().execute_export(context.text_boxes, file_list, PackageSettings.manage_package())
+
+            self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+
+            return file_list
+
+        finally:
+            with QMutexLocker(self.lock):
+                for f in data:
+                    if f["dir"] in self.active_files:
+                        self.active_files.remove(f["dir"])
+        
 
     def delete_file(self, dir, file):
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
+
+        with QMutexLocker(self.lock):
+            if dir in self.active_files:
+                print(f"Can not delete the file, cause {file} is still active in another thread.")
+                return
 
         FileOsHandler().delete_file(dir)
         self.loaded_files.remove(file)
@@ -286,6 +383,10 @@ class MainWindow(QMainWindow):
         for n in dic_list:
             dir_list.append(n["dir"])
             file_list.append(n["file"])
+            with QMutexLocker(self.lock):
+                if n["dir"] in self.active_files:
+                    print(f"The file or files are still active and can't be deleted, files in question {file_list}")
+                    return
 
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Warning")

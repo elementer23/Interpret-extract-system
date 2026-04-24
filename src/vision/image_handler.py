@@ -35,15 +35,15 @@ class ImageHandler():
         pc = pipeline_context
         ic = image_context
 
+        arr = []
+
         for i in range(len(pc.text_boxes)):
             for bbx in pc.text_boxes[i]:
                 bbxad = bbx.area_domain()
                 cv.rectangle(ic.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 255, 0), 2)
 
-            plt.figure(figsize=(10, 10))
-            plt.imshow(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
-            plt.axis('off')
-            plt.show()
+            arr.append(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
+        return arr
 
     def pdf_to_image_PIL_show(self, file):
         doc = pymupdf.open(file)
