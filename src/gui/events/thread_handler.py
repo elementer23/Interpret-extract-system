@@ -27,7 +27,7 @@ class ThreadHandler(QObject):
         print(f"Something went wrong: Exception:", error)
 
     def _event_result(self, result):
-        print(f"The actions of {result} have been executed.")
+        print(f"{result}")
 
     def run_event(self, fn, fn_out: Any | None, *args, **kwargs):
         self.thread_id += 1

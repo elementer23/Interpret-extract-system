@@ -112,7 +112,7 @@ class FileOsHandler():
         if BasicUtils.does_file_exist(file, target_directory=f"{target_path}/"):
             os.remove(file)
         else:
-            print("Bestand bestaat niet")
+            print("File does not exist")
 
     def delete_files(self, file_list: list):
         path = self.formulate_files_dir()
@@ -155,7 +155,6 @@ class FileOsHandler():
 
             return None if not arr else arr
         
-
     def renew_copies_in_dir(self, target_path: str, files_to_check: list):
         try:
             messages = []

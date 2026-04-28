@@ -24,7 +24,6 @@ class Worker(QRunnable):
         self.signals = WorkerSignals()
         self.thread_id = kwargs.get("thread_id", 0)
         self.cancelled = False
-        self.has_ended = False
 
         self.kwargs["progress_callback"] = self.signals.progress
 
@@ -45,4 +44,3 @@ class Worker(QRunnable):
                 self.signals.result.emit(result)
         finally:
             self.signals.finished.emit(self.thread_id)
-            self.has_ended = True

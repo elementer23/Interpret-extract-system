@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         self.decomp_button = QPushButton("add file(s)")
         self.decomp_button.setStatusTip("add files whether from compressed folders or loose instances.")
         self.decomp_button.setHidden(True)
-        self.decomp_button.clicked.connect(self.decomp)
+        self.decomp_button.clicked.connect(lambda checked: self.run_func(self.decomp, self.main_decomp, checked))
 
         self.update_list_button = QPushButton("update content")
         self.update_list_button.setStatusTip("update the content of the list to check for changes.")
@@ -123,7 +123,12 @@ class MainWindow(QMainWindow):
             self.file_path = dialog.selectedFiles()
             self.decomp_button.setHidden(False)
 
-    def decomp(self):
+    def decomp(self, checked, progress_callback, thread_id):
+        self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+
+        return checked
+
+    def main_decomp(self, data):
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
         Decompress(directory=target_path, file_s=self.file_path[:])
@@ -203,6 +208,7 @@ class MainWindow(QMainWindow):
             self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
 
             return plot_data
+        
         finally:
             with QMutexLocker(self.lock):
                 if data in self.active_files:
@@ -272,7 +278,7 @@ class MainWindow(QMainWindow):
 
             self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
 
-            return file_list
+            return f"{file} has been successfully exported."
         
         finally:
             with QMutexLocker(self.lock):
@@ -300,7 +306,7 @@ class MainWindow(QMainWindow):
 
             self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
 
-            return file_list
+            return f"{file_list} has or have been successfully exported."
 
         finally:
             with QMutexLocker(self.lock):

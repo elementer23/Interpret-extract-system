@@ -18,6 +18,7 @@ from utils.settings import Settings
 from utils.utilities import BasicUtils, FileType
 from core.decompress import Decompress
 import os
+from gui.events.thread_handler import ThreadHandler
 
 class ExportImageWindow(QWidget):
     def __init__(self):
@@ -90,7 +91,7 @@ class ExportImageWindow(QWidget):
 
         self.convert_button = QPushButton("convert")
         self.convert_button.setEnabled(False)
-        self.convert_button.clicked.connect(self.convert)
+        self.convert_button.clicked.connect(lambda checked: self.run_func(self.convert, self.main_convert, checked))
 
         form_layout.addRow(QLabel("choose color type:"), self.combobox_color_type)
         form_layout.addRow(QLabel("Image type to convert to:"), self.combobox_image_type)
@@ -117,6 +118,12 @@ class ExportImageWindow(QWidget):
         main_layout.addWidget(file_box)
 
         self.setLayout(main_layout)
+
+        self.threadhandler = ThreadHandler()
+
+    def run_func(self, fn, fn_out, *args, **kwargs):
+        kwargs.get("thread_id", 0)
+        self.threadhandler.run_event(fn, fn_out, args, kwargs)
 
     def reveal_extra(self, checked):
         is_hidden = False if Qt.CheckState(checked) == Qt.CheckState.Checked else True
@@ -160,7 +167,12 @@ class ExportImageWindow(QWidget):
         if dialog:
             self.save_location_button.setText(dialog)
 
-    def convert(self):
+    def convert(self, checked, progress_callback, thread_id):
+        self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
+        
+        return checked
+
+    def main_convert(self, data):
         self.label.setText(f"Selected:")
         self.convert_button.setEnabled(False)
         directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
