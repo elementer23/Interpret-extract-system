@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
         self.label.setText("Select...")
 
     def dir_content(self):
+        """Loads a content of files inside the window, from the directory applied in the settings."""
         all_files = FileOsHandler().get_temp_files_dir()
         new_files = [f for f in all_files if f["file"] not in self.loaded_files]
 
@@ -187,15 +188,26 @@ class MainWindow(QMainWindow):
 
 
     def open_file(self, dir, progress_callback, thread_id):
+        """This function is used to load the canvas on the front-end of the application.
+        It's used as a threading function however, expecting the progress_callback emit and thread_id as default.
+        
+        :type dir: string | tuple
+        :param dir: a string path of the file that should be opened as canvas.
+
+        :return data: a bunch of data with bounding box locations, embedded in the chosen file.
+        """
 
         dir_list = []
+        # check if it's a tupple or normal string, due to the threading implementation turning it into a tuple
         data = dir[0][0] if isinstance(dir, tuple) else dir
         dir_list.append(data)
 
+        # QMutexLocker lock the files that are used, so they can't be deleted while they're needed.
         with QMutexLocker(self.lock):
                 self.active_files.add(data)
 
         try:
+            # Build the pipeline, to retrieve the necessary data
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_TEXT_BUILD)
             context = builder.run(builder.handler, dir_list[:])
 
@@ -210,6 +222,7 @@ class MainWindow(QMainWindow):
             return plot_data
         
         finally:
+            # Remove the files, so they are open for deletion if necessary.
             with QMutexLocker(self.lock):
                 if data in self.active_files:
                     self.active_files.remove(data)
@@ -228,6 +241,7 @@ class MainWindow(QMainWindow):
         except ValueError: pass
 
     def open_selected_files(self, dic_list, progress_callback, thread_id):
+        """Same functionality as open_file, but with multiple files at the same time."""
         dir_list = []
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
  
@@ -316,19 +330,32 @@ class MainWindow(QMainWindow):
         
 
     def delete_file(self, dir, file):
+        """Delete the file, that has been clicked in the list.
+        Removes the file from the list on the front-end side and from the system.
+
+        :type dir: string
+        :param dir: the directory of the file that should be deleted.
+        :type file: string
+        :param file: name of the file that should be deleted (front-end related).
+        """
+
+        # retrieve the directory where the file is deleted from
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
+        # Check with QMutexLocker whether the file is in use, so it can't be deleted if in use.
         with QMutexLocker(self.lock):
             if dir in self.active_files:
                 print(f"Can not delete the file, cause {file} is still active in another thread.")
                 return
 
+        # Delete the file from the folder, from the set and the list
         FileOsHandler().delete_file(dir)
         self.loaded_files.remove(file)
         if {"dir": dir, "file": file} in self.selected_files_list:
             self.selected_files_list.remove({"dir": dir, "file": file})
 
+        # Retrieve the correct item on the front-end side, that is related to the file.
         correct_item = self.retrieve_widget_layout_in_scroll_view(label_name=file)
 
         while correct_item.count():
@@ -338,17 +365,20 @@ class MainWindow(QMainWindow):
 
         self.content_layout.removeItem(correct_item)
 
+        # Extra check to disable buttons to prevent unnecessary user actions
         if not self.selected_files_list:
             self.delete_selected_button.setEnabled(False)
             self.export_selected_button.setEnabled(False)
             self.open_selected_button.setEnabled(False)
 
+        # apply some checks to prevent bugs in the same, in case that the directory is empty
         if BasicUtils.is_directory_empty(dir_path=target_path):
             FileOsHandler().remove_dir(dir_path=target_path)
             self.main_checkbox.setEnabled(False)
             self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
     def retrieve_widget_layout_in_scroll_view(self, label_name: str):
+        """A function that retrieves the correct widget item in the layout, depending on the label name."""
         for i in reversed(range(self.content_layout.count() - 1)):
             item = self.content_layout.itemAt(i).layout()
 
@@ -381,6 +411,7 @@ class MainWindow(QMainWindow):
                     item.itemAt(y).widget().setCheckState(get_checkstate)
 
     def delete_selected_files(self, dic_list: list):
+        """The delete file implementation, but then for multiple files at the same time."""
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 

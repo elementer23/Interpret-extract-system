@@ -5,35 +5,79 @@ import re
 from domain.domain import TextDetectionBox
 
 class TextHandler():
+    """TextHandler class.
+    
+    One of the base handlers to build a Pipeline. TextHandler is usually one of the last in the Pipeline order.
+    This is where the pdf has been converted and has been enhanced beforehand, before it's pushed in the 'OCR'.
+    Where the data of the 'OCR' is extracted for each individual image, before it's saved and appended to the text_box list.
+    The TextHandler can be used as a stand-alone handler, if the text, positions etc. have to be exported out of an image.
+    """
     def __init__(self):
         super().__init__()
 
     def process(self, context):
+        """The process function. This is the process function of the TextHandler, usually one of the last handlers in the build.
+        Here the PipeContext is given along, where the pdf or pdf's have been converted to images and have been enhanced.
+        The Tesseract OCR is then run over these images, where the text, position and type of each individual annotation is saved.
+        Or at least the one's it could find.
+         
+        For now each finding needs to have a confidence score off 20 or above. Each finding is required to have a value in it,
+        it can't be an empty string. And all unnecessary special characters, that aren't connected to a letter, number or special character,
+        will be filtered out by regex and skipped. All results will be therefore normalized, turning them into uppercase. 
+
+        :type context: PipeContext
+        :param context: the PipeContext instance that is given to the Pipeline build. Contains the necessary information, to extract data from.
+        """
         # config = '-c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.()= --psm 3'
 
+        # The list of images will be looped over
         for i in range(len(context.image_s)):
-
+            
+            # tesseracts image to data function will then be used on each value
             data = tess.image_to_data(context.image_s[i], output_type=Output.DICT)
             lis = []
 
+            # Each text the OCR could find, will be looped over.
             for i in range(len(data['text'])):
+                # Everything unnecessary or invalid, will be filtered out.
                 reg_text = self.method_regex(data['text'][i])
                 if not len(reg_text) == 0:
+                    # The x, y, width and height positions of each item is assigned
                     x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
+                    # The text will be normalized
                     normalized_text = self.normalize_text(data['text'][i])
                     text = data['text'][i]
-
+                    # The confidence score of each item will be checked and has to be over 20
                     if int(float(data['conf'][i])) > 20:
+                        # The category of the item, the item itself and the coordinates are added to a class object and added to a list.
                         lis.append(TextDetectionBox(BasicUtils.categorize(text), normalized_text, x, y, w, h))
                         print(f"Text: {text} -> {normalized_text} -> conf score: {int(float(data['conf'][i]))}")
 
             # return tess.image_to_string(image)
+            # append all the data from each individual image, to an all encompassing list. Which is then returned at the end of Pipeline build.
             context.text_boxes.append(lis)
 
     def method_regex(self, val):
+        """This function filters out all unnecessary special characters, turning them into empty spaces.
+        This does not mean every single special character, only the one's that aren't connected to anything.
+
+        :type val: Any
+        :param val: the value to be filtered.
+
+        :return string: will return the filtered value.
+        """
         return re.sub(r"\s+|:+|\\+|\|+|\.+|\++|_+|<+|>+|\*+|\^+|\{+|\}+|\(+|\)+|\[+|\]+|—+|=+|-+|~+|;+|\"+", "", val)
     
     def normalize_text(self, val: str):
+        """This function somewhat normalizes the given value. 
+        For now it only turns the value into uppercase, but other mods can be added later on.
+        (if needed).
+
+        :type val: string
+        :param val: the value to be normalized.
+
+        :return string: return the value that is normalized.
+        """
         text = val.strip()
         text = text.upper()
 

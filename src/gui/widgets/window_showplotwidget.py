@@ -7,6 +7,12 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from gui.events.mpl_canvas import MplCanvas
 
 class PlotWindow(QWidget):
+      """Plotwindow class, inherits from QWidget
+      Displays the drawn canvas of matpotlib but in a PyQt6 window widget instead.
+
+      :type data: Any -> MatLike
+      :param data: boundary box data or image data to be displayed on the canvas
+      """
       def __init__(self, data):
         super().__init__()
 

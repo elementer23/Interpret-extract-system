@@ -1,11 +1,23 @@
 from ultralytics import YOLO
 
 class DetectionHandler():
+    """DetectionHandler class.
+    
+    Used to handle the yolo data and functionalities.
+    One of the base handlers, for the pipeline.
+    """
     def __init__(self):
         super().__init__()
 
-
     def process(self, context):
+        """The process function. Mainly used as one of the last handlers in a pipeline build.
+        Uses an ai-model and Yolo to detect specific symbols, through the 'obb' task.
+        Retrieves the positional arguments of these symbols and returns their:
+        positions (x,y,height,width,angle), polygon points, names and confidence score.
+
+        :type context: PipeContext
+        :param context: gives the PipeContext class with all the necessary data. 
+        """
         model = YOLO("best.pt", task="obb")
         results = model(source=context.image)
 
