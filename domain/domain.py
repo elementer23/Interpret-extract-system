@@ -17,3 +17,14 @@ class TextDetectionBox(Domain):
     def area_domain(self) -> dict:
         return {"type": self.type, "text": self.text, "left": self.x, "top": self.y, "width": self.w, "height": self.h}
     
+
+class SymbolDetectionBox(Domain):
+    def __init__(self, offset_box, confidence, name):
+        self.offset_box = offset_box
+        self.confidence = confidence
+        self.name = name
+
+    def area_domain(self) -> dict:
+        return {"offset": self.offset_box, "conf": self.confidence, "name": self.name}
+        
+    

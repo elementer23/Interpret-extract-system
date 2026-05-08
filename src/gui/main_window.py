@@ -62,6 +62,9 @@ class MainWindow(QMainWindow):
         self.update_list_button.setStatusTip("update the content of the list to check for changes.")
         self.update_list_button.clicked.connect(self.dir_content)
 
+        self.detect_selected_button = QPushButton("detect selected")
+        self.detect_selected_button.clicked.connect(lambda checked, sfl=self.selected_files_list: self.detect_symbols(sfl))
+
         self.delete_selected_button = QPushButton("delete selected")
         self.delete_selected_button.setStatusTip("delete the files that are selected.")
         self.delete_selected_button.setEnabled(False)
@@ -86,9 +89,10 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.decomp_button, 1, 3)
         grid_layout.addWidget(self.main_checkbox, 2, 0)
         grid_layout.addWidget(self.update_list_button, 2, 1)
-        grid_layout.addWidget(self.open_selected_button, 2, 2)
-        grid_layout.addWidget(self.export_selected_button, 2, 3)
-        grid_layout.addWidget(self.delete_selected_button, 2, 4)
+        grid_layout.addWidget(self.detect_selected_button, 2, 2)
+        grid_layout.addWidget(self.open_selected_button, 2, 3)
+        grid_layout.addWidget(self.export_selected_button, 2, 4)
+        grid_layout.addWidget(self.delete_selected_button, 2, 5)
         main_layout.addLayout(grid_layout)
 
         scroll_view = QScrollArea()
@@ -161,22 +165,22 @@ class MainWindow(QMainWindow):
             checkbox.stateChanged.connect(lambda checked, d=file["dir"], n=file["file"]: self.check_box_checked(d, n, checked))
             label = QLabel(f"{file["file"]}")
             
-            open_image_button = QPushButton("Open image")
-            open_image_button.setStatusTip("open the chosen file as an image with bounding boxes.")
-            export_file_button = QPushButton("export")
-            export_file_button.setStatusTip("export the chosen file according to the selected settings.")
-            remove_file_button = QPushButton("delete file")
-            remove_file_button.setStatusTip("remove the chosen file.")
+            # open_image_button = QPushButton("Open image")
+            # open_image_button.setStatusTip("open the chosen file as an image with bounding boxes.")
+            # export_file_button = QPushButton("export")
+            # export_file_button.setStatusTip("export the chosen file according to the selected settings.")
+            # remove_file_button = QPushButton("delete file")
+            # remove_file_button.setStatusTip("remove the chosen file.")
 
-            open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.run_func(self.open_file, self.show_plot_window, d))
-            export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.run_func(self.export_file, None, d, f))
-            remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
+            # open_image_button.clicked.connect(lambda checked, d=file["dir"]: self.run_func(self.open_file, self.show_plot_window, d))
+            # export_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.run_func(self.export_file, None, d, f))
+            # remove_file_button.clicked.connect(lambda checked, d=file["dir"], f=file["file"]: self.delete_file(d, f))
 
             row.addWidget(checkbox)
             row.addWidget(label)
-            row.addWidget(open_image_button)
-            row.addWidget(export_file_button)
-            row.addWidget(remove_file_button)
+            # row.addWidget(open_image_button)
+            # row.addWidget(export_file_button)
+            # row.addWidget(remove_file_button)
 
             self.content_layout.insertLayout(0, row)
             
@@ -327,6 +331,23 @@ class MainWindow(QMainWindow):
                 for f in data:
                     if f["dir"] in self.active_files:
                         self.active_files.remove(f["dir"])
+
+    def detect_symbols(self, dic_list):
+        dir_list, file_list = [], []
+        for n in dic_list:
+            dir_list.append(n["dir"])
+            file_list.append(n["file"].split(".")[0])
+
+        builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
+        context = builder.run(builder.handler, dir_list[:])
+
+        custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
+        image_context = custom.run(custom.handler, dir_list[:])
+        # plot_data = []
+        # if context is not None and image_context is not None:
+        ImageHandler().draw_detection_box(image_context=image_context, pipeline_context=context)
+        
+        # print(context)
         
 
     def delete_file(self, dir, file):

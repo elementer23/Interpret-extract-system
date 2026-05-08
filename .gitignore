@@ -212,3 +212,5 @@ __marimo__/
 # Ignore newly imported model
 data/my_model
 data/my_first_obb_model
+data/obb_pid_model
+data/core_pid_model

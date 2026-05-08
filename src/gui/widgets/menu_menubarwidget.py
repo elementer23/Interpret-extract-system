@@ -6,6 +6,7 @@ from gui.widgets.window_insertbulkwidget import InsertBulkFileWindow
 from gui.widgets.window_insertzipwidget import InsertZipFileWindow
 from gui.widgets.window_settingswidget import SettingsWindow
 from gui.widgets.window_exportimagewidget import ExportImageWindow
+from gui.widgets.window_convertdatasetwidget import ConvertDatasetWindow
 
 class CustomMenu(QMenuBar):
     def __init__(self, parent=None):
@@ -40,6 +41,11 @@ class CustomMenu(QMenuBar):
         open_export_image.setShortcut(QKeySequence("Ctrl+Shift+i"))
         open_export_image.triggered.connect(self.open_export_image_window)
 
+        open_coco_converter = QAction("&coco to yolo", self)
+        open_coco_converter.setStatusTip("convert a coco dataset to yolo dataset")
+        open_coco_converter.setShortcut(QKeySequence("Ctrl+Shift+c"))
+        open_coco_converter.triggered.connect(self.open_coco_converter_window)
+
         parent.setStatusBar(QStatusBar(self))
 
         file_menu = self.addMenu("&File")
@@ -48,7 +54,9 @@ class CustomMenu(QMenuBar):
 
         options_menu = self.addMenu("&Options")
         options_insertmenu = options_menu.addMenu("options")
+        options_datasetmenu = options_menu.addMenu("dataset")
         options_insertmenu.addActions([open_export_image, open_settings])
+        options_datasetmenu.addActions([open_coco_converter])
 
     def open_insert_window(self, window):
         if window.isVisible():
@@ -63,3 +71,7 @@ class CustomMenu(QMenuBar):
     def open_export_image_window(self):
         self.export_image_window = ExportImageWindow()
         self.export_image_window.show()
+
+    def open_coco_converter_window(self):
+        self.coco_converter_window = ConvertDatasetWindow()
+        self.coco_converter_window.show()

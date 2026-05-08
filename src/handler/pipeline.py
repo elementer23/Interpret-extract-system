@@ -16,7 +16,7 @@ class PipeContext():
     def __init__(self, data):
         self.image_s = data
         self.text_boxes = []
-        self.yolo_data = {}
+        self.yolo_data = []
         self.text_handler_present = False
 
 class Pipeline():

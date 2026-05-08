@@ -171,7 +171,7 @@ class FileOsHandler():
             if BasicUtils.does_file_exist(f, target_directory=f"{target_path}/"):
                 os.remove(f)
         
-    def create_dir(self, dir_path: str, dir_name: str) -> None:
+    def create_dir(self, dir_path: str, dir_name: str) -> None | bool:
         """This functions creater a directory based on the given path (the where) and a name (the folder you want to create.)
         It checks whether the directory already exists or not.
         
@@ -186,12 +186,16 @@ class FileOsHandler():
             try:
                 directory_path.mkdir()
                 print(f"Directory '{directory_path}' created successfully.")
+                return True
             except FileExistsError:
                 print(f"Directory '{directory_path}' already exists.")
+                return False
             except PermissionError:
                 print(f"Permission denied: Unable to create '{directory_path}'.")
+                return False
             except Exception as e:
                 print(f"An error occurred: {e}")
+                return False
 
     def remove_dir(self, dir_path: str) -> None:
         """This function removes the given directory (full path).

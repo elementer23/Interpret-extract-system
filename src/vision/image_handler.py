@@ -71,7 +71,23 @@ class ImageHandler():
 
             arr.append(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
         return arr
+    
+    def draw_detection_box(self, image_context, pipeline_context):
+        pc = pipeline_context
+        ic = image_context
 
+        arr = []
+
+        for i in range(len(pc.yolo_data)):
+            for box, conf in pc.yolo_data[i]:
+                pts = box.reshape((-1, 1, 2)).astype(np.int32)
+                cv.polylines(ic.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
+
+            plt.figure(figsize=(10, 10))
+            plt.imshow(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
+            plt.axis('off')
+            plt.show()
+        
     def pdf_to_image_PIL_show(self, file):
         """A function to instantly convert and show a pdf, as an image. (unused).
         
@@ -125,8 +141,8 @@ class ImageExportHandler():
             return image_color
         
         if isinstance(file, np.ndarray):
-            if file.shape < 3:
-                return cv.cvtColor(file, cv.COLOR_GRAY2BGR)
+            # if file.shape < 3:
+            #     return cv.cvtColor(file, cv.COLOR_GRAY2BGR)
 
             if file.shape[2] == 4:
                 return cv.cvtColor(file, cv.COLOR_RGBA2BGR)
