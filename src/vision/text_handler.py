@@ -108,7 +108,7 @@ class TextHandler():
                             
                             text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
                             cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
-                            print(f"Gevonden tekst: {text} (score: {prob:.2f})")
+                            print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
 
                     cv.imshow("EasyOCR Detectie", raw_crop)
                     cv.waitKey(0)

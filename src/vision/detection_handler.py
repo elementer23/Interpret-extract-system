@@ -111,7 +111,7 @@ class DetectionHandler():
                 for final_poly in geoms:
                     symbol_count += 1
                     coords = np.array(final_poly.exterior.coords).astype(np.int32)
-                    merged_results.append(SymbolDetectionBox((coords, 0.80), symbol_count))
+                    merged_results.append(SymbolDetectionBox((coords, 0.80), f"{count}-{symbol_count}"))
 
                 print(f"Symbols detected: {len(merged_results)}")
 
