@@ -3,6 +3,9 @@ from pytesseract import Output
 from utils.utilities import BasicUtils
 import re
 from domain.domain import TextDetectionBox
+import numpy as np
+import cv2 as cv 
+import easyocr
 
 class TextHandler():
     """TextHandler class.
@@ -53,7 +56,6 @@ class TextHandler():
                         lis.append(TextDetectionBox(BasicUtils.categorize(text), normalized_text, x, y, w, h))
                         print(f"Text: {text} -> {normalized_text} -> conf score: {int(float(data['conf'][i]))}")
 
-            # return tess.image_to_string(image)
             # append all the data from each individual image, to an all encompassing list. Which is then returned at the end of Pipeline build.
             context.text_boxes.append(lis)
 
@@ -83,3 +85,31 @@ class TextHandler():
 
         return text
     
+    def read_crop(self, image_context, pipeline_context):
+        ic = image_context
+        pc = pipeline_context
+
+        reader = easyocr.Reader(['en'], gpu=False)
+
+        for i in range(len(pc.yolo_data)):
+            for box in pc.yolo_data[i]:
+                grayed_image = cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2GRAY)
+                bbxad = box.area_domain()
+                pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
+
+                x, y, w, h = cv.boundingRect(pts)
+                raw_crop = grayed_image[y:y+h, x:x+w]
+
+                if raw_crop.size > 0:
+                    results = reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False)
+
+                    for (bbox, text, prob) in results:
+                        if prob > 0.3:  
+                            
+                            text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
+                            cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
+                            print(f"Gevonden tekst: {text} (score: {prob:.2f})")
+
+                    cv.imshow("EasyOCR Detectie", raw_crop)
+                    cv.waitKey(0)
+

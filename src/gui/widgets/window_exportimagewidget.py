@@ -91,7 +91,7 @@ class ExportImageWindow(QWidget):
 
         self.convert_button = QPushButton("convert")
         self.convert_button.setEnabled(False)
-        self.convert_button.clicked.connect(lambda checked: self.run_func(self.convert, self.main_convert, checked))
+        self.convert_button.clicked.connect(lambda checked: self.run_func(self.convert, self.convert_output, checked))
 
         form_layout.addRow(QLabel("choose color type:"), self.combobox_color_type)
         form_layout.addRow(QLabel("Image type to convert to:"), self.combobox_image_type)
@@ -122,8 +122,7 @@ class ExportImageWindow(QWidget):
         self.threadhandler = ThreadHandler()
 
     def run_func(self, fn, fn_out, *args, **kwargs):
-        kwargs.get("thread_id", 0)
-        self.threadhandler.run_event(fn, fn_out, args, kwargs)
+        self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
 
     def reveal_extra(self, checked):
         is_hidden = False if Qt.CheckState(checked) == Qt.CheckState.Checked else True
@@ -167,14 +166,8 @@ class ExportImageWindow(QWidget):
         if dialog:
             self.save_location_button.setText(dialog)
 
-    def convert(self, checked, progress_callback, thread_id):
-        self.threadhandler.track_progress(progress_callback=progress_callback, thread_id=thread_id)
-        
-        return checked
+    def convert(self, checked, progress_callback=None, thread_id=0, **kwargs):
 
-    def main_convert(self, data):
-        self.label.setText(f"Selected:")
-        self.convert_button.setEnabled(False)
         directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
 
         convert_ops = {}
@@ -194,14 +187,31 @@ class ExportImageWindow(QWidget):
         FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
         target_path = os.path.join(convert_ops['save_location'], "temp_export")
 
+        if progress_callback: progress_callback.emit((thread_id, 10.0))
+
         Decompress(directory=target_path, file_s=self.files[:])
+        if progress_callback: progress_callback.emit((thread_id, 40.0))
+
         files = FileOsHandler().get_files_from_dir(target_path=target_path)
         compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
 
         c_file = FileHandler().conversion(compatible_files)
+
+        if progress_callback: progress_callback.emit((thread_id, 60.0))
+
         ImageExportHandler().conversion(c_file, convert_ops)
 
+        if progress_callback: progress_callback.emit((thread_id, 90.0))
+
         FileOsHandler().remove_dir(target_path)
+
+        if progress_callback: progress_callback.emit((thread_id, 100.0))
+        
+        return checked
+
+    def convert_output(self, data):
+        self.label.setText(f"Selected:")
+        self.convert_button.setEnabled(False)
 
     def file_name_list(self, file_list):
         list = []

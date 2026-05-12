@@ -209,6 +209,9 @@ __marimo__/
 # Ignore YOLO model weights
 *.pt
 
+# Ignore opencv model weights
+*.onnx
+
 # Ignore newly imported model
 data/my_model
 data/my_first_obb_model

@@ -25,10 +25,11 @@ class ThreadHandler(QObject):
 
     def _event_progress(self, data):
         thread_id, n = data
-        print(f"Event #{thread_id}: {n:.1f}% done")
+        time.sleep(0.1)
+        print(f"\rEvent #{thread_id}: {n:.1f}% done", end="", flush=True)
 
     def _event_complete(self, thread_id):
-        print(f"Event #{thread_id} COMPLETE!")
+        print(f"\nEvent #{thread_id} COMPLETE!")
 
     def _event_error(self, error: tuple):
         print("event error thread handler")
@@ -57,28 +58,18 @@ class ThreadHandler(QObject):
         """
         self.thread_id += 1
 
-        worker = Worker(fn, args, thread_id=self.thread_id)
+        kwargs['thread_id'] = self.thread_id
+        worker = Worker(fn, *args, **kwargs)
 
+        worker.signals.progress.connect(self._event_progress)
         worker.signals.result.connect(fn_out if fn_out is not None else self._event_result)
         worker.signals.finished.connect(self._event_complete)
-        worker.signals.progress.connect(self._event_progress)
         worker.signals.error.connect(self._event_error)
 
         self.event_tracker[self.thread_id] = worker
         self.threadpool.start(worker) 
 
         self._update_status()
-
-    def track_progress(self, progress_callback, thread_id):
-        """Tracks the progress of the thread.
-        
-        :param progress_callback: must be present as a parameter in the function to be called back (used as emit).
-        :param thread_id: must be present as a parameter in the function to be called back (used to keep track which thread is used.)
-        """
-        for n in range(0, 5):
-            time.sleep(1)
-            progress = n * 100 / 4
-            progress_callback.emit((thread_id, progress))
 
     def _update_status(self):
         thread_count = self.threadpool.maxThreadCount()

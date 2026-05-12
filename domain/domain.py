@@ -19,12 +19,11 @@ class TextDetectionBox(Domain):
     
 
 class SymbolDetectionBox(Domain):
-    def __init__(self, offset_box, confidence, name):
+    def __init__(self, offset_box, symbol_id):
         self.offset_box = offset_box
-        self.confidence = confidence
-        self.name = name
+        self.symbol_id = symbol_id
 
     def area_domain(self) -> dict:
-        return {"offset": self.offset_box, "conf": self.confidence, "name": self.name}
+        return {"offset": self.offset_box, "symbol_id": self.symbol_id}
         
     
