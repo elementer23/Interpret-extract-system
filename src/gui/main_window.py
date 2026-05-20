@@ -24,6 +24,7 @@ from gui.widgets.menu_menubarwidget import CustomMenu
 import os
 from gui.widgets.window_showplotwidget import PlotWindow
 from gui.events.thread_handler import ThreadHandler
+from core.interpreter import Interpreter
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         self.export_selected_button = QPushButton("export selected")
         self.export_selected_button.setStatusTip("export the selected files in accordance with the chosen settings.")
         self.export_selected_button.setEnabled(False)
-        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.export_selected_files, None, sfl))
+        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.adjusted_export_selected_files, None, sfl))
 
         self.open_selected_button = QPushButton("open selected")
         self.open_selected_button.setStatusTip("open the selected files as images with bounding boxes drawn in them.")
@@ -263,6 +264,42 @@ class MainWindow(QMainWindow):
                         self.active_files.remove(f["dir"])
             if progress_callback: progress_callback.emit((thread_id, 100.0))
 
+    def adjusted_export_selected_files(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
+        data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
+        dir_list, file_list = [], []
+        for n in data:
+            dir_list.append(n["dir"])
+            file_list.append(n["file"].split(".")[0])
+
+            with QMutexLocker(self.lock):
+                self.active_files.add(n["dir"])
+
+        if progress_callback: progress_callback.emit((thread_id, 10.0))        
+
+        try:
+
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
+            context = builder.run(builder.handler, dir_list[:])
+            if progress_callback: progress_callback.emit((thread_id, 50.0))
+            if context is not None:
+                
+                TextHandler().read_crop(context=context)
+                interpreter = Interpreter(context.combo_data[:]).fetch()
+                if progress_callback: progress_callback.emit((thread_id, 70.0))
+                assign_data = []
+                assign_data.append({"tesseract": context.text_boxes, "raw_data": context.combo_data, "interpreted": interpreter})
+                Exporter().execute_export(assign_data, file_list, PackageSettings.manage_package())
+                if progress_callback: progress_callback.emit((thread_id, 90.0))
+
+            return f"{file_list} has or have been successfully exported."
+
+        finally:
+            with QMutexLocker(self.lock):
+                for f in data:
+                    if f["dir"] in self.active_files:
+                        self.active_files.remove(f["dir"])
+            if progress_callback: progress_callback.emit((thread_id, 100.0))
+
     def detect_symbols(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
         dir_list, file_list = [], []
@@ -287,7 +324,6 @@ class MainWindow(QMainWindow):
             if progress_callback: progress_callback.emit((thread_id, 60.0))
             plot_data = []
             if context is not None and image_context is not None:
-                TextHandler().read_crop(image_context=image_context, pipeline_context=context)
                 plot_data = ImageHandler().draw_detection_box(image_context=image_context, pipeline_context=context)
                 if progress_callback: progress_callback.emit((thread_id, 90.0))
 

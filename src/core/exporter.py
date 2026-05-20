@@ -6,6 +6,7 @@ from py7zr import pack_7zarchive, unpack_7zarchive
 from utils.settings import Settings
 from enumeration.package_type import PackageType
 from handler.file_handler import FileOsHandler
+import cv2 as cv
 
 #Register the package to prevent register and threading problems for later on.
 try:
@@ -83,6 +84,51 @@ class Exporter():
                 else:
                     wb.save(f"{self.dir_path}/{self.dir_name}/output{i}-{origin_file_s[i]}.xlsx")
 
+    def safe_val(self, val):
+        if isinstance(val, str) and val.startswith(('=', '+', '-', '@')):
+            return f"'{val}"
+        return val
+
+    def adjusted_export_to_excel(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:
+        wb = Workbook()
+        sheet1 = wb.active
+        sheet1.title = "Tesseract"
+        sheet2 = wb.create_sheet("Raw data")
+        sheet3 = wb.create_sheet("Interpreted")
+
+        for data in data_to_enter:
+            tesseract = data['tesseract']
+            raw_data = data['raw_data']
+            interpreted = data['interpreted']
+
+            for i, file_name in enumerate(origin_file_s):
+
+                file_header = [f"{self.safe_val(file_name)}"]
+                sheet1.append(file_header)
+                sheet1.append(["Type", "Text", "Left", "Top", "Width", "Height"])
+                for entry in tesseract[i]:
+                    dt = entry.area_domain()
+                    row = [dt['type'], self.safe_val(dt['text']), dt['left'], dt['top'], dt['width'], dt['height']]
+                    sheet1.append(row)
+
+                sheet2.append(file_header)
+                sheet2.append(["Text", "Confidence", "Symbol id", "Text offset Left", "Text offset Top", "Text offset Width", "Text offset Height",
+                                    "Symbol offset Left", "Symbol offset Top", "Symbol offset Width", "Symbol offset Height"])
+                for entry in raw_data[i]:
+                    dt = entry.area_domain()
+                    x, y, w, h = cv.boundingRect(dt['offset'])
+                    x2, y2, w2, h2 = dt['symbol_offset']
+                    row = [self.safe_val(dt['text']), dt['conf'], self.safe_val(dt['symbol']), x, y, w, h, x2, y2, w2, h2]
+                    sheet2.append(row)
+
+                sheet3.append(file_header)
+                sheet3.append(["Symbol id", "Letter code", "Tag number", "Left", "Top", "Width", "Height"])
+                for entry in interpreted[i]:
+                    dt = entry.area_domain()
+                    row = [self.safe_val(dt['symbol']), self.safe_val(dt['text']), self.safe_val(dt['tagnumber']), dt['left'], dt['top'], dt['width'], dt['height']]
+                    sheet3.append(row)
+
+        wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
 
     def export_to_json(self, data_to_enter: list, origin_file_s: list) -> None:
         """Function to export text handler and detection handler data to json files.
@@ -168,16 +214,18 @@ class Exporter():
         """
         FileOsHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
 
-        if len(Settings.retrieve_settings("chosen_export")) == 0:
-            self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
+        self.adjusted_export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
+
+        # if len(Settings.retrieve_settings("chosen_export")) == 0:
+        #     self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
         
-        match Settings.retrieve_settings("chosen_export"):
-            case "excel":
-                self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
-            case "json":
-                self.export_to_json(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
-            case "csv":
-                self.export_to_csv(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
+        # match Settings.retrieve_settings("chosen_export"):
+        #     case "excel":
+        #         self.export_to_excel(data_to_enter=data_to_enter, origin_file_s=origin_file_s, package_type=package_type)
+        #     case "json":
+        #         self.export_to_json(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
+        #     case "csv":
+        #         self.export_to_csv(data_to_enter=data_to_enter, origin_file_s=origin_file_s)
 
         self.execute_package_export(dir_path=self.dir_path, dir_name=self.dir_name, package_type=package_type)
 

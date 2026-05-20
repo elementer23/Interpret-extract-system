@@ -15,6 +15,7 @@ class Handler():
 
     STANDARD_TEXT_BUILD = (FileHandler(), ImageHandler(), TextHandler())
     STANDARD_DETECTION_BUILD = (FileHandler(), ImageHandler(), DetectionHandler())
+    STANDARD_BUILD = (FileHandler(), ImageHandler(), DetectionHandler(), TextHandler())
 
     def pipeline_builder(self, custom: bool, build_type: Any | None, *args):
         """This function is used to build the pipeline.

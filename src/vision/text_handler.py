@@ -2,7 +2,7 @@ import pytesseract as tess
 from pytesseract import Output
 from utils.utilities import BasicUtils
 import re
-from domain.domain import TextDetectionBox
+from domain.domain import TextDetectionBox, RawData
 import numpy as np
 import cv2 as cv 
 import easyocr
@@ -85,15 +85,13 @@ class TextHandler():
 
         return text
     
-    def read_crop(self, image_context, pipeline_context):
-        ic = image_context
-        pc = pipeline_context
-
+    def read_crop(self, context):
         reader = easyocr.Reader(['en'], gpu=False)
 
-        for i in range(len(pc.yolo_data)):
-            for box in pc.yolo_data[i]:
-                grayed_image = cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2GRAY)
+        for i in range(len(context.yolo_data)):
+            data = []
+            for box in context.yolo_data[i]:
+                grayed_image = cv.cvtColor(context.image_s[i], cv.COLOR_BGR2GRAY) if len(context.image_s[i].shape) > 2 else context.image_s[i]
                 bbxad = box.area_domain()
                 pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
 
@@ -105,11 +103,19 @@ class TextHandler():
 
                     for (bbox, text, prob) in results:
                         if prob > 0.3:  
+
+                            local_pts = np.array(bbox).astype(np.int32)
+                            offset = np.array([x, y])
+                            global_pts = local_pts + offset
+                            text_pts_global = global_pts.reshape((-1, 1, 2))
                             
                             text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
-                            cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
-                            print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
+                            # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
+                            # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
+                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h)))
 
-                    cv.imshow("EasyOCR Detectie", raw_crop)
-                    cv.waitKey(0)
+                    # cv.imshow("EasyOCR Detectie", raw_crop)
+                    # cv.waitKey(0)
+            context.combo_data.append(data)
+
 

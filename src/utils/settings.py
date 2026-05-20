@@ -4,7 +4,7 @@ from enumeration.package_type import PackageType
 import re
 from typing import Any
 
-_JSON = { "settings": [{
+__JSON = { "settings": [{
             "default_export": "excel",
             "export_options": [
                 "excel",
@@ -353,7 +353,7 @@ class Settings(object):
         """
         try:
             with open("../src/utils/settings.json", "w+") as new_file:
-                json.dump(_JSON, new_file, indent=4)
+                json.dump(__JSON, new_file, indent=4)
 
         except json.JSONDecodeError:
             print("Error: Failed to encode JSON to the file.")

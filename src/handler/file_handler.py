@@ -242,7 +242,7 @@ class FileOsHandler():
             return None if not arr else arr
     
     @DeprecationWarning
-    def _renew_copies_in_dir(self, target_path: str, files_to_check: list):
+    def __renew_copies_in_dir(self, target_path: str, files_to_check: list):
         try:
             messages = []
             count = 0

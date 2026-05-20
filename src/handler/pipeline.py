@@ -17,6 +17,7 @@ class PipeContext():
         self.image_s = data
         self.text_boxes = []
         self.yolo_data = []
+        self.combo_data = []
         self.text_handler_present = False
 
 class Pipeline():

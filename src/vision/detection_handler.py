@@ -42,8 +42,11 @@ class DetectionHandler():
         count = 0
 
         for detection_file in context.image_s:
-            grayed_file = cv.cvtColor(detection_file, cv.COLOR_BGR2GRAY)
-            file_to_detect = cv.cvtColor(grayed_file, cv.COLOR_GRAY2BGR)
+            if len(detection_file.shape) > 2:
+                grayed_file = cv.cvtColor(detection_file, cv.COLOR_BGR2GRAY)
+                file_to_detect = cv.cvtColor(grayed_file, cv.COLOR_GRAY2BGR)
+            else: 
+                file_to_detect = cv.cvtColor(detection_file, cv.COLOR_GRAY2BGR)
 
             relevant = []
             merged_results = []

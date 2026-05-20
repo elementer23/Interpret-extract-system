@@ -9,7 +9,7 @@ from utils.utilities import BasicUtils, FileType
 
 BLOCK_SIZE = 1024
 
-class _FlatWriter(Py7zIO):
+class __FlatWriter(Py7zIO):
     def __init__(self, target_path):
         self.file = open(target_path, 'wb')
         self._size = 0
@@ -34,7 +34,7 @@ class _FlatWriter(Py7zIO):
         self.file.close()
 
 
-class _FlatWriterFactory(WriterFactory):
+class __FlatWriterFactory(WriterFactory):
     def __init__(self, output_dir):
         self.output_dir = output_dir
 
@@ -42,7 +42,7 @@ class _FlatWriterFactory(WriterFactory):
         flat_name = os.path.basename(filename)
         if not flat_name:
             return None
-        return _FlatWriter(os.path.join(self.output_dir, flat_name))
+        return __FlatWriter(os.path.join(self.output_dir, flat_name))
     
 
 class Decompress():
@@ -64,7 +64,7 @@ class Decompress():
 
         self.extract()
 
-    def _decrypt(self):
+    def __decrypt(self):
         pass
 
     def extract(self):
@@ -197,7 +197,7 @@ class Decompress():
         :type file_list: list
         :param file_list: list of files and checks whether a 7zip file is present, only extracting those.
         """
-        factory = _FlatWriterFactory(self.directory)
+        factory = __FlatWriterFactory(self.directory)
 
         for file in file_list:
             try:

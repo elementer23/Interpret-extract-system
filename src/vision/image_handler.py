@@ -67,7 +67,7 @@ class ImageHandler():
         for i in range(len(pc.text_boxes)):
             for bbx in pc.text_boxes[i]:
                 bbxad = bbx.area_domain()
-                cv.rectangle(ic.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 255, 0), 2)
+                cv.rectangle(ic.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 0, 255), 2)
 
             arr.append(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
         return arr

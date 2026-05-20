@@ -13,7 +13,7 @@ class IO():
     def __init__(self):
         pass
 
-    def _change_label_number():
+    def __change_label_number():
 
         with open('C:/Users/697/projecten/labeling/data/labels/fb437a33-021-1.txt') as topo_file:
             for line in topo_file:
@@ -51,7 +51,7 @@ class IO():
                     case "31":
                         print(f"14 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
 
-    def _change_label_number2():
+    def __change_label_number2():
 
         with open("C:/Users/697/projecten/labeling/more data/data/labels/fb437a33-021-1.txt") as topo_file:
             for line in topo_file:
@@ -89,7 +89,7 @@ class IO():
                     case "31":
                         print(f"14 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
 
-    def _change_label_name():
+    def __change_label_name():
         for filename in os.listdir(label_folder):
             if filename.endswith(".txt"):
                 # 1. Decodeer de gekke tekens zoals %5C naar slashes
@@ -116,7 +116,7 @@ class IO():
 
         print("Klaar!")
 
-    def _remove_unnecessary_images():
+    def __remove_unnecessary_images():
 
         label_list = os.listdir(label_folder)
 
@@ -219,11 +219,11 @@ class IO():
             ignore_negative_samples=True,
         )
 
-        self._coco_labeling(output_archive_name_of_sliced_images)
+        self.__coco_labeling(output_archive_name_of_sliced_images)
 
     # slice_sahi()
 
-    def _coco_labeling(self, json_coco: str):
+    def __coco_labeling(self, json_coco: str):
         tiled_json = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/tiled_annotations.json_coco.json'
         output_label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/labels/'
 
@@ -257,9 +257,9 @@ class IO():
 
         print("Done! the labels should be in the 'labels' directory.")
 
-        self._coco_jpg_removal(json_coco)
+        self.__coco_jpg_removal(json_coco)
 
-    def _coco_jpg_removal(self, dir_name: str):
+    def __coco_jpg_removal(self, dir_name: str):
         image_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/'
         label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/labels/'
 

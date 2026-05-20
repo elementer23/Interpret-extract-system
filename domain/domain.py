@@ -25,5 +25,28 @@ class SymbolDetectionBox(Domain):
 
     def area_domain(self) -> dict:
         return {"offset": self.offset_box, "symbol_id": self.symbol_id}
-        
-    
+       
+
+class RawData(Domain):
+    def __init__(self, text, conf, symbol_id, offset, symbol_offset):
+        self.text = text
+        self.conf = conf
+        self.symbol_id = symbol_id
+        self.offset = offset
+        self.symbol_offset = symbol_offset
+
+    def area_domain(self) -> dict:
+        return {"text": self.text, "conf": self.conf, "symbol": self.symbol_id, "offset": self.offset, "symbol_offset": self.symbol_offset}        
+
+class InterpretedDetection(Domain):
+    def __init__(self, symbol_id: str | int, text: str, tagnumber: str, x: int, y: int, w: int, h: int):
+        self.symbol_id = symbol_id
+        self.text = text
+        self.tagnumber = tagnumber
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+    def area_domain(self) -> dict:
+        return {"symbol": self.symbol_id, "text": self.text, "tagnumber": self.tagnumber, "left": self.x, "top": self.y, "width": self.w, "height": self.h}

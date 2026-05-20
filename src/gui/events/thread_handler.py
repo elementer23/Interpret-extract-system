@@ -17,26 +17,26 @@ class ThreadHandler(QObject):
         self.threadpool = QThreadPool()
         self.thread_id = 0
 
-    def _clean_threadpool(self, amount_of_workers: list) -> bool:
+    def __clean_threadpool(self, amount_of_workers: list) -> bool:
         if not amount_of_workers:
             self.threadpool.waitForDone()
             self.threadpool.disconnect()
             print("Finished working.")
 
-    def _event_progress(self, data):
+    def __event_progress(self, data):
         thread_id, n = data
         time.sleep(0.1)
         print(f"\rEvent #{thread_id}: {n:.1f}% done", end="", flush=True)
 
-    def _event_complete(self, thread_id):
+    def __event_complete(self, thread_id):
         print(f"\nEvent #{thread_id} COMPLETE!")
 
-    def _event_error(self, error: tuple):
+    def __event_error(self, error: tuple):
         print("event error thread handler")
         for err in error:
             print(err)
 
-    def _event_result(self, result):
+    def __event_result(self, result):
         print(f"{result}")
 
     def run_event(self, fn, fn_out: Any | None, *args, **kwargs):
@@ -61,17 +61,17 @@ class ThreadHandler(QObject):
         kwargs['thread_id'] = self.thread_id
         worker = Worker(fn, *args, **kwargs)
 
-        worker.signals.progress.connect(self._event_progress)
-        worker.signals.result.connect(fn_out if fn_out is not None else self._event_result)
-        worker.signals.finished.connect(self._event_complete)
-        worker.signals.error.connect(self._event_error)
+        worker.signals.progress.connect(self.__event_progress)
+        worker.signals.result.connect(fn_out if fn_out is not None else self.__event_result)
+        worker.signals.finished.connect(self.__event_complete)
+        worker.signals.error.connect(self.__event_error)
 
         self.event_tracker[self.thread_id] = worker
         self.threadpool.start(worker) 
 
-        self._update_status()
+        self.__update_status()
 
-    def _update_status(self):
+    def __update_status(self):
         thread_count = self.threadpool.maxThreadCount()
         active_thread_count = self.threadpool.activeThreadCount()
         print(f"Limit of threads available {thread_count}")
