@@ -31,7 +31,6 @@ __JSON = { "settings": [{
             "temp_dir_name": "export_container",
             "package_type_s": [
                 "default",
-                "multi_sheet",
                 "zip",
                 "7zip",
                 "tar"
@@ -339,7 +338,7 @@ class Settings(object):
         Settings.write_to_settings("", "custom_file_selection_name")
         Settings.write_to_settings("C:/Users/697/Documents", "directory_path")
         Settings.write_to_settings("export_container", "temp_dir_name")
-        Settings.write_to_settings(["default", "multi_sheet", "zip", "7zip", "tar"], "package_type_s")
+        Settings.write_to_settings(["default", "zip", "7zip", "tar"], "package_type_s")
         Settings.write_to_settings("default", "chosen_package")
         Settings.write_to_settings("C:/Users/697/Documents", "temp_files_path")
         Settings.write_to_settings("file_container", "temp_files_name")
@@ -393,8 +392,6 @@ class PackageSettings(object):
             match packaging:
                 case "default":
                     return PackageType.DEFAULT
-                case "multi_sheet":
-                    return PackageType.MULTI_SINGULAR
                 case "zip":
                     return PackageType.ZIP
                 case "tar":

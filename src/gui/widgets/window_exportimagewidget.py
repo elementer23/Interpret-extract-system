@@ -29,7 +29,6 @@ class ExportImageWindow(QWidget):
         self.setMaximumSize(QSize(600, 550))
 
         self.files = []
-        # self.convert_ops = {}
 
         main_layout = QVBoxLayout()
 

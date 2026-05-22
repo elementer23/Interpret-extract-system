@@ -20,10 +20,55 @@ class TextHandler():
 
     def process(self, context):
         """The process function. This is the process function of the TextHandler, usually one of the last handlers in the build.
-        Here the PipeContext is given along, where the pdf or pdf's have been converted to images and have been enhanced.
-        The Tesseract OCR is then run over these images, where the text, position and type of each individual annotation is saved.
+        Here the PipeContext is given along, where the pdf or pdf's have been converted to images, have been enhanced and have been
+        cropped, depending on symbol coördinates.
+        The EasyOCR OCR is then run over these crops, where the text, position and type of each individual annotation is saved.
         Or at least the one's it could find.
          
+        For now each finding needs to have a confidence score off 30 or above.
+
+        :type context: PipeContext
+        :param context: the PipeContext instance that is given to the Pipeline build. Contains the necessary information, to extract data from.
+        """
+        reader = easyocr.Reader(['en'], gpu=False)
+
+        for i in range(len(context.yolo_data)):
+            data = []
+            for box in context.yolo_data[i]:
+                grayed_image = cv.cvtColor(context.image_s[i], cv.COLOR_BGR2GRAY) if len(context.image_s[i].shape) > 2 else context.image_s[i]
+                bbxad = box.area_domain()
+                pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
+
+                x, y, w, h = cv.boundingRect(pts)
+                raw_crop = grayed_image[y:y+h, x:x+w]
+
+                if raw_crop.size > 0:
+                    results = reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False)
+
+                    for (bbox, text, prob) in results:
+                        if prob > 0.3:  
+
+                            local_pts = np.array(bbox).astype(np.int32)
+                            offset = np.array([x, y])
+                            global_pts = local_pts + offset
+                            text_pts_global = global_pts.reshape((-1, 1, 2))
+                            
+                            text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
+                            # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
+                            # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
+                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h)))
+
+                    # cv.imshow("EasyOCR Detectie", raw_crop)
+                    # cv.waitKey(0)
+            context.combo_data.append(data)
+        
+    
+    def read_tesseract(self, context):
+        """
+        Tesseract OCR, this function will not work if the pipeline hasn't been build beforehand. Has to consist out of the
+        filehandler and imagehandler at least. Since the files have to be processed first. Before finally giving the context
+        of the pipeline to this function.
+
         For now each finding needs to have a confidence score off 20 or above. Each finding is required to have a value in it,
         it can't be an empty string. And all unnecessary special characters, that aren't connected to a letter, number or special character,
         will be filtered out by regex and skipped. All results will be therefore normalized, turning them into uppercase. 
@@ -84,38 +129,5 @@ class TextHandler():
         text = text.upper()
 
         return text
-    
-    def read_crop(self, context):
-        reader = easyocr.Reader(['en'], gpu=False)
-
-        for i in range(len(context.yolo_data)):
-            data = []
-            for box in context.yolo_data[i]:
-                grayed_image = cv.cvtColor(context.image_s[i], cv.COLOR_BGR2GRAY) if len(context.image_s[i].shape) > 2 else context.image_s[i]
-                bbxad = box.area_domain()
-                pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
-
-                x, y, w, h = cv.boundingRect(pts)
-                raw_crop = grayed_image[y:y+h, x:x+w]
-
-                if raw_crop.size > 0:
-                    results = reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False)
-
-                    for (bbox, text, prob) in results:
-                        if prob > 0.3:  
-
-                            local_pts = np.array(bbox).astype(np.int32)
-                            offset = np.array([x, y])
-                            global_pts = local_pts + offset
-                            text_pts_global = global_pts.reshape((-1, 1, 2))
-                            
-                            text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
-                            # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
-                            # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
-                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h)))
-
-                    # cv.imshow("EasyOCR Detectie", raw_crop)
-                    # cv.waitKey(0)
-            context.combo_data.append(data)
 
 

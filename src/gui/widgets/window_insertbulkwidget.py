@@ -94,4 +94,4 @@ class InsertBulkFileWindow(QWidget):
         if not self.export_button.isHidden():
             self.export_button.setHidden(True)
 
-            Exporter().export_to_excel(self.context.text_boxes)
+            # Exporter().export_to_excel(self.context.text_boxes)
