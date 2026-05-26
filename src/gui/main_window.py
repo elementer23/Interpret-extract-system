@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
-        Decompress(directory=target_path, file_s=self.file_path[:])
+        Decompress(directory=target_path, file_s=self.file_path[:]).extract()
 
         for i in range(1, 11):
             if progress_callback:

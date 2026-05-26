@@ -61,9 +61,7 @@ class Decompress():
         self.directory = directory
         self.file_s = file_s
         self.pwd = pwd
-
-        self.extract()
-
+        
     def __decrypt(self):
         pass
 
@@ -125,7 +123,7 @@ class Decompress():
                     library["tar"].append(file)
                     continue
 
-            if BasicUtils.categorize_file_type(file) is FileType.PDF or FileType.IMAGE or FileType.TEMPLATE_EXTENSION or FileType.TEXT_EXTENSION:
+            if BasicUtils.categorize_file_type(file) in [FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION]:
                 library["non-compressed"].append(file)
                 continue
 

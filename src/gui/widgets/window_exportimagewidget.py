@@ -188,7 +188,7 @@ class ExportImageWindow(QWidget):
 
         if progress_callback: progress_callback.emit((thread_id, 10.0))
 
-        Decompress(directory=target_path, file_s=self.files[:])
+        Decompress(directory=target_path, file_s=self.files[:]).extract()
         if progress_callback: progress_callback.emit((thread_id, 40.0))
 
         files = FileOsHandler().get_files_from_dir(target_path=target_path)
