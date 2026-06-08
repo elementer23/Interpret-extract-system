@@ -27,7 +27,12 @@ class ImageHandler():
         :type context: PipeContext
         :param context: the PipeContext instance, that contains the data from the converted pdf's.
         """
-        for i in range(len(context.image_s)):
+        if context.progress_callback:
+            context.progress_callback(0)
+
+        amount_of_files = len(context.image_s)
+
+        for i in range(amount_of_files):
             if context.image_s[i].shape[2] == 4:
                 context.image_s[i] = cv.cvtColor(context.image_s[i], cv.COLOR_RGBA2BGR)
             else:
@@ -43,38 +48,37 @@ class ImageHandler():
                 kernel = np.ones((1,1), np.uint8)
                 context.image_s[i] = cv.morphologyEx(context.image_s[i], cv.MORPH_OPEN, kernel)
 
+            if context.progress_callback:
+                current_file = i + 1
+                percentage = int((current_file / amount_of_files) * 100)
+                context.progress_callback(percentage)
 
-    def draw_bounding_box(self, image_context, pipeline_context):
+
+    def draw_bounding_box(self, pipeline_context):
         """This function uses the original text box coordinates, obtained from applying 'OCR' on the converted pdf's.
         And draws them as rectangles using the original coordinates, of the given image. Before returning them in a list.
 
-        image context would be the converted image, before OCR or anything is applied on it. 
-        And pipeline context would be all fully converted files, after OCR. Just to apply the text box coordinates from that image.
-        Both are seperate instances of the PipeContext and seperate instances of a build Pipeline.
+        pipeline context would be all fully converted files, after OCR. Just to apply the text box coordinates from that image.
 
-        :type image_context: PipeContext
-        :param image_context: the converted image, before applied effects and OCR.
         :type pipeline_context: PipeContext
         :param pipeline_context: the converted image, after applied effects and OCR, for text box information.
 
         :return list: a list of converted images, with drawing coordinates applied to them.
         """
         pc = pipeline_context
-        ic = image_context
 
         arr = []
 
         for i in range(len(pc.text_boxes)):
             for bbx in pc.text_boxes[i]:
                 bbxad = bbx.area_domain()
-                cv.rectangle(ic.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 0, 255), 2)
+                cv.rectangle(pc.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 0, 255), 2)
 
-            arr.append(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
+            arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
         return arr
     
-    def draw_detection_box(self, image_context, pipeline_context):
+    def draw_detection_box(self, pipeline_context):
         pc = pipeline_context
-        ic = image_context
 
         arr = []
 
@@ -82,9 +86,9 @@ class ImageHandler():
             for box in pc.yolo_data[i]:
                 bbxad = box.area_domain()
                 pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
-                cv.polylines(ic.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
+                cv.polylines(pc.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
 
-            arr.append(cv.cvtColor(ic.image_s[i], cv.COLOR_BGR2RGB))
+            arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
         return arr
         
     def pdf_to_image_PIL_show(self, file):
@@ -202,14 +206,11 @@ class ImageExportHandler():
                 return self.read_to_color(file)
             case "inverted":
                 return self.read_to_inverted(file)
-
-
+            
     def grid_effect(self, file: np.ndarray | str, config: dict, count: int = 0):
         """This function applies a grid effect to the regular image or to the numpy array version of it.
         It does not essentially apply a grid, a literal grid. But it cuts the image into a grid and
         saves each piece as an individual image.
-
-        It currently splits the images in a row of 6 and collumns of 3.
 
         :type file: np.ndarray | string
         :param file: a file object in the form of it's path string or a numpy array.
@@ -225,23 +226,24 @@ class ImageExportHandler():
         if isinstance(file, np.ndarray):
             image = file
 
-        num_rows = 6
-        num_cols = 3
+        tile_size, overlap = config['tile_size'], config['tile_overlap']
 
-        image_height, image_width = image.shape[0], image.shape[1]
-        sub_image_height = image_height // num_rows
-        sub_image_width = image_width // num_cols
+        h, w = image.shape[0], image.shape[1]
+        count_tiles = 0
 
-        for row in range(num_rows):
-            for col in range(num_cols):
-                start_x = col * sub_image_width
-                start_y = row * sub_image_height
-                end_x = (col + 1) * sub_image_width
-                end_y = (row + 1) * sub_image_height
+        for y in range(0, h, tile_size - overlap):
+            for x in range(0, w, tile_size - overlap):
+                tile = image[y:y+tile_size, x:x+tile_size]
 
-                sub_image = image[start_y:end_y, start_x:end_x]
+                if tile.shape[0] < 10 or tile.shape[1] < 10:
+                    continue
 
-                cv.imwrite(f"{config['save_location']}/{config['archive_name']}/piece_{row}_{col}-{count}{config['image_type']}", sub_image)
+                if np.std(tile) < 2:
+                    continue
+
+                count_tiles += 1
+
+                cv.imwrite(f"{config['save_location']}/{config['archive_name']}/tile-{count_tiles}_image-{count}{config['image_type']}", tile)
 
 
     def gaussian_blur_effect(self, file: np.ndarray | str, config: dict):

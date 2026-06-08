@@ -1,4 +1,4 @@
-import torch
+from src.config import DEVICE
 from PyQt6.QtWidgets import QApplication
 from gui.main_window import MainWindow
 import sys

@@ -19,7 +19,13 @@ class FileHandler():
         :type context: PipeContext
         :param context: the parameter containing the PipeContext class, consisting out of a list of pdf files.  
         """
-        for i in range(len(context.image_s)):
+
+        if context.progress_callback:
+            context.progress_callback(0)
+
+        amount_of_files = len(context.image_s)
+
+        for i in range(amount_of_files):
             try:
                 doc = pymupdf.open(context.image_s[i])
                 for page in doc:
@@ -35,6 +41,10 @@ class FileHandler():
                         np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
 
                     context.image_s[i] = np_buffer
+                if context.progress_callback:
+                    current_file = i + 1
+                    percentage = int((current_file / amount_of_files) * 100)
+                    context.progress_callback(percentage)
             except Exception as ex:
                 print(ex)
                 return

@@ -6,6 +6,8 @@ class Domain(ABC):
         pass
 
 class TextDetectionBox(Domain):
+    __slots__=('type', 'text', 'x', 'y', 'w', 'h')
+
     def __init__(self, type: str, text: str, x: int, y: int, w: int, h: int):
         self.type = type
         self.text = text
@@ -19,6 +21,8 @@ class TextDetectionBox(Domain):
     
 
 class SymbolDetectionBox(Domain):
+    __slots__=('offset_box', 'symbol_id')
+
     def __init__(self, offset_box, symbol_id):
         self.offset_box = offset_box
         self.symbol_id = symbol_id
@@ -28,6 +32,8 @@ class SymbolDetectionBox(Domain):
        
 
 class RawData(Domain):
+    __slots__=('conf', 'offset', 'symbol_offset')
+
     def __init__(self, text, conf, symbol_id, offset, symbol_offset):
         self.text = text
         self.conf = conf
@@ -39,6 +45,8 @@ class RawData(Domain):
         return {"text": self.text, "conf": self.conf, "symbol": self.symbol_id, "offset": self.offset, "symbol_offset": self.symbol_offset}        
 
 class InterpretedDetection(Domain):
+    __slots__=('tagnumber')
+
     def __init__(self, symbol_id: str | int, text: str, tagnumber: str, x: int, y: int, w: int, h: int):
         self.symbol_id = symbol_id
         self.text = text

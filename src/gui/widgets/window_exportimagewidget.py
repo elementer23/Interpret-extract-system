@@ -10,7 +10,9 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QGroupBox,
     QFormLayout,
-    QCheckBox
+    QCheckBox,
+    QProgressBar,
+    QHBoxLayout
 )
 from handler.file_handler import FileHandler, FileOsHandler
 from vision.image_handler import ImageExportHandler
@@ -25,12 +27,15 @@ class ExportImageWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Export file to image for dataset creation")
-        self.setMinimumSize(QSize(400, 450))
-        self.setMaximumSize(QSize(600, 550))
+        self.setMinimumSize(QSize(500, 550))
+        self.setMaximumSize(QSize(700, 650))
 
         self.files = []
+        self.count_active_threads = 0
 
         main_layout = QVBoxLayout()
+
+        progress_layout = QHBoxLayout()
 
         group_box = QGroupBox("image settings")
         form_layout = QFormLayout()
@@ -73,6 +78,18 @@ class ExportImageWindow(QWidget):
         self.combobox_effect_type.setHidden(True)
         self.combobox_effect_type.addItems(["default", "grid", "gaussianblur", "medianblur"])
 
+        self.combobox_effect_type.currentTextChanged.connect(self.grid_options)
+
+        self.tile_size_label = QLabel("Tile Size:")
+        self.tile_size_label.setHidden(True)
+        self.tile_size_input = QLineEdit("640")
+        self.tile_size_input.setHidden(True)
+
+        self.tile_overlap_label = QLabel("Tile Overlap:")
+        self.tile_overlap_label.setHidden(True)
+        self.tile_overlap_input = QLineEdit("100")
+        self.tile_overlap_input.setHidden(True)
+
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
 
         self.save_location_button = QPushButton("default")
@@ -99,6 +116,8 @@ class ExportImageWindow(QWidget):
         extra_form_layout.addRow(self.export_type_label, self.combobox_export_type)
         extra_form_layout.addRow(self.encryption_input_label, self.encryption_input)
         extra_form_layout.addRow(self.effect_type_label, self.combobox_effect_type)
+        extra_form_layout.addRow(self.tile_size_label, self.tile_size_input)
+        extra_form_layout.addRow(self.tile_overlap_label, self.tile_overlap_input)
 
         directory_form_layout.addRow(QLabel("save to this directory:"), self.save_location_button)
         directory_form_layout.addRow(QLabel("name of archive:"), self.save_as)
@@ -106,22 +125,43 @@ class ExportImageWindow(QWidget):
         file_form_layout.addRow(self.label, self.select_file_s)
         file_form_layout.addRow(self.convert_button)
 
+        self.progressbar = QProgressBar()
+        self.progressbar.setVisible(False)
+        self.progressbar.setTextVisible(False)
+
         group_box.setLayout(form_layout)
         directory_box.setLayout(directory_form_layout)
         extra_box.setLayout(extra_form_layout)
         file_box.setLayout(file_form_layout)
+        progress_layout.addWidget(self.progressbar)
 
         main_layout.addWidget(group_box)
         main_layout.addWidget(extra_box)
         main_layout.addWidget(directory_box)
         main_layout.addWidget(file_box)
+        main_layout.addLayout(progress_layout)
 
         self.setLayout(main_layout)
 
         self.threadhandler = ThreadHandler()
+        self.threadhandler.func_finished.connect(self.progressbar.setValue)
+        self.threadhandler.event_finished.connect(self.event_has_ended)
 
     def run_func(self, fn, fn_out, *args, **kwargs):
+
+        self.count_active_threads += 1
+        self.progressbar.setVisible(True)
+        self.progressbar.setTextVisible(True)
+
         self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
+
+    def event_has_ended(self, thread_id):
+        self.count_active_threads -= 1
+        if self.count_active_threads <= 0:
+            self.count_active_threads = 0
+            self.progressbar.setVisible(False)
+            self.progressbar.setTextVisible(False)
+            self.progressbar.setValue(0)
 
     def reveal_extra(self, checked):
         is_hidden = False if Qt.CheckState(checked) == Qt.CheckState.Checked else True
@@ -137,6 +177,20 @@ class ExportImageWindow(QWidget):
             self.combobox_export_type.setCurrentIndex(0)
             self.encryption_input.setText("")
             self.combobox_effect_type.setCurrentIndex(0)
+            self.tile_size_input.setText("640")
+            self.tile_overlap_input.setText("100")
+
+    def grid_options(self, val):
+        is_hidden = False if val == "grid" else True
+
+        self.tile_size_label.setHidden(is_hidden)
+        self.tile_size_input.setHidden(is_hidden)
+        self.tile_overlap_label.setHidden(is_hidden)
+        self.tile_overlap_input.setHidden(is_hidden)
+
+        if is_hidden:
+            self.tile_size_input.setText("640")
+            self.tile_overlap_input.setText("100")
 
 
     def open_dir(self):
@@ -181,30 +235,33 @@ class ExportImageWindow(QWidget):
         convert_ops.update({"export_type": self.combobox_export_type.currentText()})
         convert_ops.update({"encryption": encryption})
         convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
+        convert_ops.update({"tile_size": int(self.tile_size_input.text())})
+        convert_ops.update({"tile_overlap": int(self.tile_overlap_input.text())})
 
         FileOsHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
         FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
         target_path = os.path.join(convert_ops['save_location'], "temp_export")
 
-        if progress_callback: progress_callback.emit((thread_id, 10.0))
+        def update_progressbar(percentage):
+            if progress_callback:
+                progress_callback.emit(percentage)
 
-        Decompress(directory=target_path, file_s=self.files[:]).extract()
-        if progress_callback: progress_callback.emit((thread_id, 40.0))
+        Decompress(directory=target_path, file_s=self.files, progress_callback=update_progressbar)
 
         files = FileOsHandler().get_files_from_dir(target_path=target_path)
         compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
 
         c_file = FileHandler().conversion(compatible_files)
 
-        if progress_callback: progress_callback.emit((thread_id, 60.0))
+        if progress_callback: progress_callback.emit(60)
 
         ImageExportHandler().conversion(c_file, convert_ops)
 
-        if progress_callback: progress_callback.emit((thread_id, 90.0))
+        if progress_callback: progress_callback.emit(90)
 
         FileOsHandler().remove_dir(target_path)
 
-        if progress_callback: progress_callback.emit((thread_id, 100.0))
+        if progress_callback: progress_callback.emit(100)
         
         return checked
 

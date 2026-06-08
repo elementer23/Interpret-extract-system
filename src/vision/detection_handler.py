@@ -1,6 +1,8 @@
+from src.config import DEVICE
 from ultralytics import YOLO
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+from shapely.strtree import STRtree
 import numpy as np
 from domain.domain import SymbolDetectionBox
 import cv2 as cv
@@ -13,6 +15,41 @@ class DetectionHandler():
     """
     def __init__(self):
         super().__init__()
+        self.model = YOLO("core_pid_model.pt").to(DEVICE)
+
+    def _tile_generator(self, file_to_predict, tile_size, overlap):
+
+        h, w = file_to_predict.shape[:2]
+
+        for y in range(0, h, tile_size - overlap):
+            for x in range(0, w, tile_size - overlap):
+                tile = file_to_predict[y:y+tile_size, x:x+tile_size]
+
+                if tile.shape[0] < 10 or tile.shape[1] < 10 or np.std(tile) < 2:
+                    continue
+
+                if len(tile.shape) > 2:
+                    grayed_tile = cv.cvtColor(tile, cv.COLOR_BGR2GRAY)
+                    converted_tile = cv.cvtColor(grayed_tile, cv.COLOR_GRAY2BGR)
+                else: 
+                    converted_tile = cv.cvtColor(tile, cv.COLOR_GRAY2BGR)
+
+                yield converted_tile, (x, y)
+
+
+    def _predict_batch(self, tiles, offsets, relevant_list):
+        results = self.model.predict(tiles, imgsz=640, conf=0.15, batch=len(tiles), verbose=False, device="cpu")
+
+        for i, r in enumerate(results):
+            if r.obb is not None:
+                x_off, y_off = offsets[i]
+                boxes = r.obb.xyxyxyxy.cpu().numpy()
+                confidences = r.obb.conf.cpu().numpy()
+
+                for box, conf in zip(boxes, confidences):
+                    offset_box = box + np.array([x_off, y_off])
+                    relevant_list.append((offset_box, conf))
+
 
     def process(self, context):
         """The process function. Mainly used as one of the last handlers in a pipeline build.
@@ -36,89 +73,77 @@ class DetectionHandler():
         :type context: PipeContext
         :param context: gives the PipeContext class with all the necessary data. 
         """
-        model = YOLO("core_pid_model.pt")
         tile_size = 640
         overlap = 100
-        count = 0
+        cpu_batch_size = 4
 
-        for detection_file in context.image_s:
-            if len(detection_file.shape) > 2:
-                grayed_file = cv.cvtColor(detection_file, cv.COLOR_BGR2GRAY)
-                file_to_detect = cv.cvtColor(grayed_file, cv.COLOR_GRAY2BGR)
-            else: 
-                file_to_detect = cv.cvtColor(detection_file, cv.COLOR_GRAY2BGR)
+        if context.progress_callback:
+            context.progress_callback(0)
+
+        amount_of_files = len(context.image_s)
+
+        for count, detection_file in enumerate(context.image_s, start=1):
+            print(f"Working on file number: {count}")
+
+            file_to_predict = detection_file
 
             relevant = []
             merged_results = []
-            tiles_to_predict = []
-            tile_offsets = []
-            
-            h, w, _ = file_to_detect.shape
-            count += 1
 
-            print(f"Working on file number: {count}")
+            tiles_generator = self._tile_generator(file_to_predict, tile_size, overlap)
 
-            tiles_skipped = 0
+            current_batch_tiles = []
+            current_batch_offsets = []
 
-            for y in range(0, h, tile_size - overlap):
-                for x in range(0, w, tile_size - overlap):
-                    tile = file_to_detect[y:y+tile_size, x:x+tile_size]
+            for tile, (x_off, y_off) in tiles_generator:
+                current_batch_tiles.append(tile)
+                current_batch_offsets.append((x_off, y_off))
 
-                    if tile.shape[0] < 10 or tile.shape[1] < 10:
-                        continue
+                if len(current_batch_tiles) == cpu_batch_size:
+                    self._predict_batch(current_batch_tiles, current_batch_offsets, relevant)
 
-                    if np.std(tile) < 2:
-                        tiles_skipped += 1
-                        continue
+                    current_batch_tiles.clear()
+                    current_batch_offsets.clear()
 
-                    tiles_to_predict.append(tile)
-                    tile_offsets.append((x, y))
-
-            print(f"Amount of tiles skipped: {tiles_skipped}")
-            print(f"Amount of tiles to check: {len(tiles_to_predict)}")
-
-            if tiles_to_predict:
-                stream_on = False if len(tiles_to_predict) < 100 else True
-                results = model.predict(tiles_to_predict, imgsz=640, conf=0.15, batch=16, stream=stream_on)
-                
-                for i, r in enumerate(results):
-                    x_off, y_off = tile_offsets[i]
-
-                    if r.obb is not None:
-                        boxes = r.obb.xyxyxyxy.cpu().numpy()
-                        confidences = r.obb.conf.cpu().numpy()
-
-                        for box, conf in zip(boxes, confidences):
-                            offset_box = box.copy()
-                            offset_box[:, 0] += x_off
-                            offset_box[:, 1] += y_off
-
-                            relevant.append((offset_box, conf))
+            if current_batch_tiles:
+                self._predict_batch(current_batch_tiles, current_batch_offsets, relevant)
 
             if relevant:
-                symbol_count = 0
-                polygonsWithConf = []
-                for box, conf in relevant:
-                    poly = Polygon(box)
-                    if poly.is_valid:
-                        polygonsWithConf.append({"poly": poly, "conf": conf})
+                polygons = [Polygon(box) for box, conf in relevant if Polygon(box).is_valid]
 
-                temp_polygons = [p["poly"] for p in polygonsWithConf]
-                merged_poly_collection = unary_union(temp_polygons)
+                tree = STRtree(polygons)
+                merged_polygons = []
+                visited = set()
 
-                if merged_poly_collection.geom_type == 'Polygon':
-                    geoms = [merged_poly_collection]
-                else:
-                    geoms = list(merged_poly_collection.geoms)
+                for i, poly in enumerate(polygons):
+                    if i in visited:
+                        continue
 
-                for final_poly in geoms:
-                    symbol_count += 1
+                    indices = tree.query(poly)
+                    cluster = [polygons[idx] for idx in indices if idx not in visited]
+
+                    if cluster:
+                        merged_cluster = unary_union(cluster)
+
+                        if merged_cluster.geom_type == 'Polygon':
+                            merged_polygons.append(merged_cluster)
+                        else:
+                            merged_polygons.extend(list(merged_cluster.geoms))
+
+                        for idx in indices:
+                            visited.add(idx)
+
+                for symbol_count, final_poly in enumerate(merged_polygons, start=1):
                     coords = np.array(final_poly.exterior.coords).astype(np.int32)
                     merged_results.append(SymbolDetectionBox((coords, 0.80), f"{count}-{symbol_count}"))
 
                 print(f"Symbols detected: {len(merged_results)}")
 
             print("Predicting done! Adding to list of coördinates.")
+
+            if context.progress_callback:
+                percentage = int((count / amount_of_files) * 100)
+                context.progress_callback(percentage)
             
             context.yolo_data.append(merged_results)
                 

@@ -1,3 +1,4 @@
+from src.config import DEVICE
 import pytesseract as tess
 from pytesseract import Output
 from utils.utilities import BasicUtils
@@ -17,6 +18,8 @@ class TextHandler():
     """
     def __init__(self):
         super().__init__()
+        use_gpu_boolean = (DEVICE.type == "cuda")
+        self.reader = easyocr.Reader(['en'], gpu=use_gpu_boolean)
 
     def process(self, context):
         """The process function. This is the process function of the TextHandler, usually one of the last handlers in the build.
@@ -30,20 +33,25 @@ class TextHandler():
         :type context: PipeContext
         :param context: the PipeContext instance that is given to the Pipeline build. Contains the necessary information, to extract data from.
         """
-        reader = easyocr.Reader(['en'], gpu=False)
+        if context.progress_callback:
+            context.progress_callback(0)
 
-        for i in range(len(context.yolo_data)):
+        amount_of_files = len(context.yolo_data)
+
+        for i, yolo_box in enumerate(context.yolo_data):
             data = []
-            for box in context.yolo_data[i]:
-                grayed_image = cv.cvtColor(context.image_s[i], cv.COLOR_BGR2GRAY) if len(context.image_s[i].shape) > 2 else context.image_s[i]
+
+            current_image = context.image_s[i]
+            grayed_image = cv.cvtColor(current_image, cv.COLOR_BGR2GRAY) if len(current_image.shape) > 2 else current_image
+
+            for box in yolo_box:
                 bbxad = box.area_domain()
                 pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
-
                 x, y, w, h = cv.boundingRect(pts)
                 raw_crop = grayed_image[y:y+h, x:x+w]
 
                 if raw_crop.size > 0:
-                    results = reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False)
+                    results = self.reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False, workers=0)
 
                     for (bbox, text, prob) in results:
                         if prob > 0.3:  
@@ -58,10 +66,12 @@ class TextHandler():
                             # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
                             data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h)))
 
-                    # cv.imshow("EasyOCR Detectie", raw_crop)
-                    # cv.waitKey(0)
+            if context.progress_callback:
+                current_file = i + 1
+                percentage = int((current_file / amount_of_files) * 100)
+                context.progress_callback(percentage)
+
             context.combo_data.append(data)
-        
     
     def read_tesseract(self, context):
         """
@@ -76,30 +86,39 @@ class TextHandler():
         :type context: PipeContext
         :param context: the PipeContext instance that is given to the Pipeline build. Contains the necessary information, to extract data from.
         """
-        # config = '-c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.()= --psm 3'
+
+        if context.progress_callback:
+            context.progress_callback(0)
+
+        amount_of_files = len(context.image_s)
 
         # The list of images will be looped over
-        for i in range(len(context.image_s)):
+        for i in range(amount_of_files):
             
             # tesseracts image to data function will then be used on each value
             data = tess.image_to_data(context.image_s[i], output_type=Output.DICT)
             lis = []
 
             # Each text the OCR could find, will be looped over.
-            for i in range(len(data['text'])):
+            for j in range(len(data['text'])):
                 # Everything unnecessary or invalid, will be filtered out.
-                reg_text = self.method_regex(data['text'][i])
+                reg_text = self.method_regex(data['text'][j])
                 if not len(reg_text) == 0:
                     # The x, y, width and height positions of each item is assigned
-                    x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
+                    x, y, w, h = data['left'][j], data['top'][j], data['width'][j], data['height'][j]
                     # The text will be normalized
-                    normalized_text = self.normalize_text(data['text'][i])
-                    text = data['text'][i]
+                    normalized_text = self.normalize_text(data['text'][j])
+                    text = data['text'][j]
                     # The confidence score of each item will be checked and has to be over 20
-                    if int(float(data['conf'][i])) > 20:
+                    if int(float(data['conf'][j])) > 20:
                         # The category of the item, the item itself and the coordinates are added to a class object and added to a list.
                         lis.append(TextDetectionBox(BasicUtils.categorize(text), normalized_text, x, y, w, h))
-                        print(f"Text: {text} -> {normalized_text} -> conf score: {int(float(data['conf'][i]))}")
+                        print(f"Text: {text} -> {normalized_text} -> conf score: {int(float(data['conf'][j]))}")
+
+            if context.progress_callback:
+                current_file = i + 1
+                percentage = int((current_file / amount_of_files) * 100)
+                context.progress_callback(percentage)
 
             # append all the data from each individual image, to an all encompassing list. Which is then returned at the end of Pipeline build.
             context.text_boxes.append(lis)

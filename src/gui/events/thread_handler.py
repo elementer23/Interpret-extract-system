@@ -1,7 +1,7 @@
 import time
 from gui.events.worker import Worker
 from typing import Any
-from PyQt6.QtCore import QThreadPool, QObject
+from PyQt6.QtCore import QThreadPool, QObject, pyqtSignal
 
 class ThreadHandler(QObject):
     """Thread Handler.
@@ -10,6 +10,8 @@ class ThreadHandler(QObject):
     Connects with the Worker class, to emit these signals.
 
     """
+    func_finished = pyqtSignal(int)
+    event_finished = pyqtSignal(int)
 
     def __init__(self, parent = None):
         super().__init__(parent)
@@ -17,11 +19,10 @@ class ThreadHandler(QObject):
         self.threadpool = QThreadPool()
         self.thread_id = 0
 
-    def __clean_threadpool(self, amount_of_workers: list) -> bool:
-        if not amount_of_workers:
-            self.threadpool.waitForDone()
-            self.threadpool.disconnect()
-            print("Finished working.")
+    def __clean_threadpool(self):
+        self.threadpool.waitForDone()
+        self.threadpool.disconnect()
+        print("Finished working.")
 
     def __event_progress(self, data):
         thread_id, n = data
@@ -29,6 +30,8 @@ class ThreadHandler(QObject):
         print(f"\rEvent #{thread_id}: {n:.1f}% done", end="", flush=True)
 
     def __event_complete(self, thread_id):
+        self.event_tracker.pop(thread_id)
+        self.event_finished.emit(thread_id)
         print(f"\nEvent #{thread_id} COMPLETE!")
 
     def __event_error(self, error: tuple):
@@ -61,7 +64,7 @@ class ThreadHandler(QObject):
         kwargs['thread_id'] = self.thread_id
         worker = Worker(fn, *args, **kwargs)
 
-        worker.signals.progress.connect(self.__event_progress)
+        worker.signals.progress.connect(self.func_finished.emit)
         worker.signals.result.connect(fn_out if fn_out is not None else self.__event_result)
         worker.signals.finished.connect(self.__event_complete)
         worker.signals.error.connect(self.__event_error)

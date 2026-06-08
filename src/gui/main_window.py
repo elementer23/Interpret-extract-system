@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
     QWidget,
     QFileDialog,
     QCheckBox,
-    QMessageBox
+    QMessageBox,
+    QProgressBar
     )
 from handler.main_handler import Handler
 from handler.file_handler import FileHandler, FileOsHandler
@@ -32,6 +33,7 @@ class MainWindow(QMainWindow):
         self.lock = QMutex()
         self.active_files = set()
         self.windows = []
+        self.count_active_threads = 0
         self.setWindowTitle("interpret & extract")
 
         self.setMinimumSize(QSize(650, 500))
@@ -41,6 +43,7 @@ class MainWindow(QMainWindow):
 
         self.file_path = []
         self.selected_files_list = []
+        self.file_widgets = {}
 
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)
@@ -109,15 +112,36 @@ class MainWindow(QMainWindow):
 
         scroll_view.setWidget(content_widget)
         main_layout.addWidget(scroll_view)
-        
+
+        self.progressbar = QProgressBar()
+        self.progressbar.setVisible(False)
+        self.progressbar.setTextVisible(False)
+
+        self.statusBar().addPermanentWidget(self.progressbar)
+       
         main_widget.setLayout(main_layout)
 
         self.dir_content()
 
         self.threadhandler = ThreadHandler()
+        self.threadhandler.func_finished.connect(self.progressbar.setValue)
+        self.threadhandler.event_finished.connect(self.event_has_ended)
 
     def run_func(self, fn, fn_out, *args, **kwargs):
+
+        self.count_active_threads += 1
+        self.progressbar.setVisible(True)
+        self.progressbar.setTextVisible(True)
+
         self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
+
+    def event_has_ended(self, thread_id):
+        self.count_active_threads -= 1
+        if self.count_active_threads <= 0:
+            self.count_active_threads = 0
+            self.progressbar.setVisible(False)
+            self.progressbar.setTextVisible(False)
+            self.progressbar.setValue(0)
 
     def open_file_dialog(self):
         filter = Settings.retrieve_settings()
@@ -135,11 +159,11 @@ class MainWindow(QMainWindow):
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
-        Decompress(directory=target_path, file_s=self.file_path[:]).extract()
-
-        for i in range(1, 11):
+        def update_progressbar(percentage):
             if progress_callback:
-                progress_callback.emit((thread_id, 90 + i))
+                progress_callback.emit(percentage)
+
+        Decompress(directory=target_path, file_s=self.file_path[:], progress_callback=update_progressbar)
 
         return checked
 
@@ -151,9 +175,21 @@ class MainWindow(QMainWindow):
     def dir_content(self):
         """Loads a content of files inside the window, from the directory applied in the settings."""
         all_files = FileOsHandler().get_temp_files_dir()
+
+        current_file_names = [f['file'] for f in all_files]
+
+        for file_name in list(self.file_widgets.keys()):
+            if file_name not in current_file_names:
+                layout_item = self.file_widgets[file_name]
+                self.clear_sub_layout(layout_item)
+                self.content_layout.removeItem(layout_item)
+
+                del self.file_widgets[file_name]
+                self.loaded_files.discard(file_name)
+
         new_files = [f for f in all_files if f["file"] not in self.loaded_files]
 
-        if not all_files and self.content_layout.count() <= 1:
+        if not current_file_names and self.content_layout.count() <= 1:
             self.content_layout.insertWidget(0, QLabel("Geen content"))
             self.main_checkbox.setEnabled(False)
             return
@@ -176,12 +212,19 @@ class MainWindow(QMainWindow):
             row.addWidget(label)
 
             self.content_layout.insertLayout(0, row)
-            
+            self.file_widgets[file["file"]] = row
             self.loaded_files.add(file["file"])
 
         self.main_checkbox.setEnabled(True)
         if not self.selected_files_list:
             self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
+
+    def clear_sub_layout(self, layout):
+        while layout.count() > 0:
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
         
     def show_plot_window(self, data):
         try:
@@ -205,24 +248,18 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
+        def update_progressbar(percentage):
+            if progress_callback:
+                progress_callback.emit(percentage)
+
         try:
             builder = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-            context = builder.run(builder.handler, dir_list[:])
+            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
             TextHandler().read_tesseract(context=context)
 
-            if progress_callback: progress_callback.emit((thread_id, 20.0))
-
-            custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-            image_context = custom.run(custom.handler, dir_list[:])
-
-            if progress_callback: progress_callback.emit((thread_id, 50.0))
-
             plot_data = []
-            if context is not None and image_context is not None:
-                if progress_callback: progress_callback.emit((thread_id, 80.0))
-                plot_data = ImageHandler().draw_bounding_box(image_context=image_context, pipeline_context=context)
-
-            if progress_callback: progress_callback.emit((thread_id, 100.0))
+            if context is not None:
+                plot_data = ImageHandler().draw_bounding_box(pipeline_context=context)
 
             return plot_data
 
@@ -242,21 +279,19 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
-        if progress_callback: progress_callback.emit((thread_id, 10.0))        
+        def update_progressbar(percentage):
+            if progress_callback:
+                progress_callback.emit(percentage)
 
         try:
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
-            context = builder.run(builder.handler, dir_list[:])
-            if progress_callback: progress_callback.emit((thread_id, 60.0))
+            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
             if context is not None:
                 interpreter = Interpreter(context.combo_data[:]).fetch()
-                if progress_callback: progress_callback.emit((thread_id, 70.0))
                 TextHandler().read_tesseract(context=context)
-                if progress_callback: progress_callback.emit((thread_id, 80.0))
                 assign_data = []
                 assign_data.append({"tesseract": context.text_boxes, "raw_data": context.combo_data, "interpreted": interpreter})
                 Exporter().execute_export(assign_data, dir_list[:], PackageSettings.manage_package())
-                if progress_callback: progress_callback.emit((thread_id, 90.0))
 
             return f"{file_list} has or have been successfully exported."
 
@@ -265,7 +300,6 @@ class MainWindow(QMainWindow):
                 for f in data:
                     if f["dir"] in self.active_files:
                         self.active_files.remove(f["dir"])
-            if progress_callback: progress_callback.emit((thread_id, 100.0))
 
     def detect_symbols(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
@@ -277,21 +311,16 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
-        if progress_callback: progress_callback.emit((thread_id, 10.0))
+        def update_progressbar(percentage):
+            if progress_callback:
+                progress_callback.emit(percentage)
 
         try:
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
-            context = builder.run(builder.handler, dir_list[:])
-
-            if progress_callback: progress_callback.emit((thread_id, 30.0))
-
-            custom = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-            image_context = custom.run(custom.handler, dir_list[:])
-            if progress_callback: progress_callback.emit((thread_id, 60.0))
+            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
             plot_data = []
-            if context is not None and image_context is not None:
-                plot_data = ImageHandler().draw_detection_box(image_context=image_context, pipeline_context=context)
-                if progress_callback: progress_callback.emit((thread_id, 90.0))
+            if context is not None:
+                plot_data = ImageHandler().draw_detection_box(pipeline_context=context)
 
             return plot_data
         
@@ -300,8 +329,6 @@ class MainWindow(QMainWindow):
                 for f in data:
                     if f["dir"] in self.active_files:
                         self.active_files.remove(f["dir"])
-            if progress_callback: progress_callback.emit((thread_id, 100.0))
-        
 
     def retrieve_widget_layout_in_scroll_view(self, label_name: str):
         """A function that retrieves the correct widget item in the layout, depending on the label name."""
@@ -325,6 +352,7 @@ class MainWindow(QMainWindow):
         self.export_selected_button.setEnabled(check_handler)
         self.open_selected_button.setEnabled(check_handler)
         self.detect_selected_button.setEnabled(check_handler)
+        self.update_list_button.setEnabled(not check_handler)
         if not check_handler:
             self.main_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
@@ -380,6 +408,7 @@ class MainWindow(QMainWindow):
             self.export_selected_button.setEnabled(False)
             self.open_selected_button.setEnabled(False)
             self.detect_selected_button.setEnabled(False)
+            self.update_list_button.setEnabled(True)
             
             if BasicUtils.is_directory_empty(dir_path=target_path):
                 FileOsHandler().remove_dir(dir_path=target_path)

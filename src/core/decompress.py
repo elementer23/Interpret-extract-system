@@ -7,9 +7,9 @@ import os
 from handler.file_handler import FileOsHandler
 from utils.utilities import BasicUtils, FileType
 
-BLOCK_SIZE = 1024
+BLOCK_SIZE = 8192
 
-class __FlatWriter(Py7zIO):
+class _FlatWriter(Py7zIO):
     def __init__(self, target_path):
         self.file = open(target_path, 'wb')
         self._size = 0
@@ -34,7 +34,7 @@ class __FlatWriter(Py7zIO):
         self.file.close()
 
 
-class __FlatWriterFactory(WriterFactory):
+class _FlatWriterFactory(WriterFactory):
     def __init__(self, output_dir):
         self.output_dir = output_dir
 
@@ -42,7 +42,7 @@ class __FlatWriterFactory(WriterFactory):
         flat_name = os.path.basename(filename)
         if not flat_name:
             return None
-        return __FlatWriter(os.path.join(self.output_dir, flat_name))
+        return _FlatWriter(os.path.join(self.output_dir, flat_name))
     
 
 class Decompress():
@@ -57,10 +57,12 @@ class Decompress():
     :type pwd: str = None
     :param pwd: parameter for password, currently not in use.
     """
-    def __init__(self, directory: str, file_s: list, pwd: str = None):
+    def __init__(self, directory: str, file_s: list, progress_callback=None, pwd: str = None):
         self.directory = directory
         self.file_s = file_s
         self.pwd = pwd
+        self.progress_callback = progress_callback
+        self.extract()
         
     def __decrypt(self):
         pass
@@ -70,17 +72,19 @@ class Decompress():
         path = FileOsHandler().formulate_files_dir()
         FileOsHandler().create_dir(path[0], path[1])
 
-        if not self.check_validity():
-            return None
+        library = self.check_validity()
+        if not library:
+            return
         
-        extensions = [FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION]
+        extensions = {FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION}
+        count = 0
+
+        if self.progress_callback:
+            self.progress_callback(0)
 
         try:
-            library = self.check_validity() if isinstance(self.check_validity(), dict) else False
-            if not library:
-                return
-            
             for key, value in library.items():
+                count += 1
                 match key:
                     case "zip":
                             self.zip_extract(value)
@@ -89,9 +93,12 @@ class Decompress():
                     case "7zip":
                             self.py7zip_extract(value)
                     case "non-compressed":
-                        for i in range(len(value)):
-                            if BasicUtils.categorize_file_type(value[i]) in extensions:
-                                FileOsHandler().copy_files(value[i], self.directory)
+                        for file_path in value:
+                            if BasicUtils.categorize_file_type(file_path) in extensions:
+                                FileOsHandler().copy_files(file_path, self.directory)
+                if self.progress_callback:
+                    percentage = int((count / len(library)) * 100)
+                    self.progress_callback(percentage)
 
         except Exception as ex:
             print("Exception:", ex)
@@ -101,6 +108,8 @@ class Decompress():
     def check_validity(self):
         """Checks the validity of the given file(s) and categorizes them as 'zip', '7zip', 'tar' or 'non-compressed'"""
         library = {"zip": [], "7zip": [], "tar": [], "non-compressed": []}
+        extensions = {FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION}
+
         for file in self.file_s:
             if zipfile.is_zipfile(file):
                 try:
@@ -123,7 +132,7 @@ class Decompress():
                     library["tar"].append(file)
                     continue
 
-            if BasicUtils.categorize_file_type(file) in [FileType.PDF, FileType.IMAGE, FileType.TEMPLATE_EXTENSION, FileType.TEXT_EXTENSION]:
+            if BasicUtils.categorize_file_type(file) in extensions:
                 library["non-compressed"].append(file)
                 continue
 
@@ -151,7 +160,7 @@ class Decompress():
                         try:
                             f = tar.extractfile(member)
                             if f is not None:
-                                while f.read(BLOCK_SIZE * BLOCK_SIZE):
+                                while f.read(BLOCK_SIZE):
                                     pass
 
                         except (tarfile.TarError, OSError, EOFError):
@@ -195,7 +204,7 @@ class Decompress():
         :type file_list: list
         :param file_list: list of files and checks whether a 7zip file is present, only extracting those.
         """
-        factory = __FlatWriterFactory(self.directory)
+        factory = _FlatWriterFactory(self.directory)
 
         for file in file_list:
             try:

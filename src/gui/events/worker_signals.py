@@ -19,4 +19,4 @@ class WorkerSignals(QObject):
     finished = pyqtSignal(int)  # thread_id
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
-    progress = pyqtSignal(tuple)  # (thread_id, progress_value)
+    progress = pyqtSignal(int)  # (progress_percentage)

@@ -13,12 +13,13 @@ class PipeContext():
     :type data: Any
     :param data: a parameter to pass any type of data through, mainly used for pdf files. (Main purpose, other behavior has to be implemented seperately).
     """
-    def __init__(self, data):
+    def __init__(self, data, progress_callback=None):
         self.image_s = data
         self.text_boxes = []
         self.yolo_data = []
         self.combo_data = []
         self.text_handler_present = False
+        self.progress_callback = progress_callback
 
 class Pipeline():
     """Pipeline class.
@@ -36,7 +37,7 @@ class Pipeline():
         if args is not None:
             self.handler = args
 
-    def run(self, class_handlers, data) -> PipeContext | None:
+    def run(self, class_handlers, data, progress_callback=None) -> PipeContext | None:
         """This function runs or starts the pipeline.
         This function will essentially accept any type of data, but it will not run on any type of data.
         If no class_handlers are present, it will fail and return None. If the data isn't a list containing file paths
@@ -71,7 +72,7 @@ class Pipeline():
             if not pdf_arr:
                 raise Exception
             
-            context = PipeContext(pdf_arr[:])
+            context = PipeContext(pdf_arr[:], progress_callback=progress_callback)
             context.text_handler_present = u.is_class_present(class_handlers, TextHandler)
 
         except Exception:
