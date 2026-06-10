@@ -316,7 +316,7 @@ class MainWindow(QMainWindow):
                 progress_callback.emit(percentage)
 
         try:
-            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_DETECTION_BUILD)
+            builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
             context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
             plot_data = []
             if context is not None:

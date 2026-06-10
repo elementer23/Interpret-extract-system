@@ -7,6 +7,8 @@ from gui.widgets.window_insertzipwidget import InsertZipFileWindow
 from gui.widgets.window_settingswidget import SettingsWindow
 from gui.widgets.window_exportimagewidget import ExportImageWindow
 from gui.widgets.window_convertdatasetwidget import ConvertDatasetWindow
+from gui.widgets.window_imageto_pdfwidget import ImageToPDFWindow
+from gui.widgets.window_generate_extracteddatawidget import GenerateExtractedDataPDF
 
 class CustomMenu(QMenuBar):
     def __init__(self, parent=None):
@@ -46,6 +48,16 @@ class CustomMenu(QMenuBar):
         open_coco_converter.setShortcut(QKeySequence("Ctrl+Shift+c"))
         open_coco_converter.triggered.connect(self.open_coco_converter_window)
 
+        open_image_to_pdf = QAction("&image to pdf", self)
+        open_image_to_pdf.setStatusTip("convert image to pdf")
+        open_image_to_pdf.setShortcut(QKeySequence("Ctrl+p"))
+        open_image_to_pdf.triggered.connect(self.open_image_to_pdf_window)
+
+        open_generate_data_pdf = QAction("&generate data on pdf", self)
+        open_generate_data_pdf.setStatusTip("generate extracted data on pdf")
+        open_generate_data_pdf.setShortcut(QKeySequence("Ctrl+g"))
+        open_generate_data_pdf.triggered.connect(self.open_generate_data_pdf_window)
+
         parent.setStatusBar(QStatusBar(self))
 
         file_menu = self.addMenu("&File")
@@ -54,9 +66,9 @@ class CustomMenu(QMenuBar):
 
         options_menu = self.addMenu("&Options")
         options_insertmenu = options_menu.addMenu("options")
-        options_datasetmenu = options_menu.addMenu("dataset")
+        options_convertmenu = options_menu.addMenu("convert")
         options_insertmenu.addActions([open_export_image, open_settings])
-        options_datasetmenu.addActions([open_coco_converter])
+        options_convertmenu.addActions([open_coco_converter, open_image_to_pdf, open_generate_data_pdf])
 
     def open_insert_window(self, window):
         if window.isVisible():
@@ -75,3 +87,11 @@ class CustomMenu(QMenuBar):
     def open_coco_converter_window(self):
         self.coco_converter_window = ConvertDatasetWindow()
         self.coco_converter_window.show()
+
+    def open_image_to_pdf_window(self):
+        self.image_to_pdf_window = ImageToPDFWindow()
+        self.image_to_pdf_window.show()
+
+    def open_generate_data_pdf_window(self):
+        self.generate_data_pdf_window = GenerateExtractedDataPDF()
+        self.generate_data_pdf_window.show()

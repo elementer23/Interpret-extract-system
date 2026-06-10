@@ -5,6 +5,7 @@ import pymupdf
 import matplotlib.pyplot as plt
 from core.exporter import Exporter
 from utils.settings import PackageSettings
+from collections import defaultdict
 
 MAX_KERNEL_LENGTH = 31
 
@@ -38,16 +39,6 @@ class ImageHandler():
             else:
                 context.image_s[i] = cv.cvtColor(context.image_s[i], cv.COLOR_RGB2BGR)
 
-            if context.text_handler_present:
-
-                context.image_s[i] = cv.cvtColor(context.image_s[i], cv.COLOR_BGR2GRAY)
-
-                cv.medianBlur(context.image_s[i], 3)
-                context.image_s[i] = cv.adaptiveThreshold(context.image_s[i], 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 27, 20)
-
-                kernel = np.ones((1,1), np.uint8)
-                context.image_s[i] = cv.morphologyEx(context.image_s[i], cv.MORPH_OPEN, kernel)
-
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
@@ -77,16 +68,57 @@ class ImageHandler():
             arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
         return arr
     
+
+    def __generate_symbol_connection(self, data):
+        batch = []
+        
+        rows = len(data)
+        for i in range(rows):
+            grouped_batch = defaultdict(list)
+            for box in data[i]:
+                bbxad = box.area_domain()
+                grouped_batch[bbxad['symbol']].append(bbxad["text"])
+            batch.append(grouped_batch)
+        return batch    
+    
+    def __generate_flat_space(self, start_y, gap_y, cols, total_items, image):
+         if total_items > 0:
+            num_rows = ((total_items - 1) // cols) + 1
+            flat_height = start_y + (num_rows * gap_y) + 20
+            cv.rectangle(image, (0, 0), (image.shape[1], int(flat_height)), (255, 255, 255), cv.FILLED)
+            
     def draw_detection_box(self, pipeline_context):
         pc = pipeline_context
-
         arr = []
 
-        for i in range(len(pc.yolo_data)):
-            for box in pc.yolo_data[i]:
+        batch = self.__generate_symbol_connection(pc.combo_data)
+        batch_per_file = []
+        for it in batch:
+            batch_per_file.append([(k, v) for k, v in it.items()])
+
+        # x2, y2, w2, h2 = cv.boundingRect(bbxad["offset"])
+        # pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
+        # cv.polylines(pc.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
+
+        rows = len(pc.combo_data)
+        cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 500, 40
+  
+        for i in range(rows):
+            for box in pc.combo_data[i]:
                 bbxad = box.area_domain()
-                pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
-                cv.polylines(pc.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
+                x, y, w, h = bbxad["symbol_offset"]
+                cv.rectangle(pc.image_s[i], (x, y), (x + w, y + h), (0, 255, 0), 3)
+
+            total_items = len(batch_per_file[i])
+            self.__generate_flat_space(start_y, gap_y, cols, total_items, pc.image_s[i])
+            for idx, item in enumerate(batch_per_file[i]):
+                symbol_id, text_list = item
+                filtered_text = f"{symbol_id}: {', '.join(text_list)}"
+                grid_col = idx % cols
+                grid_row = idx // cols
+                text_x = start_x + (grid_col * gap_x)
+                text_y = start_y + (grid_row * gap_y)
+                cv.putText(pc.image_s[i], filtered_text, (int(text_x), int(text_y)), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv.LINE_AA)
 
             arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
         return arr

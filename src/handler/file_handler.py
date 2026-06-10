@@ -6,6 +6,8 @@ from pathlib import Path
 from utils.utilities import BasicUtils, FileType
 import pathlib
 from utils.settings import Settings
+from collections import defaultdict
+import re
 
 class FileHandler():
     """FileHandler class, used for handling the process of pdf to image conversion."""
@@ -86,6 +88,89 @@ class FileHandler():
 
         return arr        
     
+
+    def __generate_detected_connections(self, data):
+        grouped_batch = defaultdict(list)
+
+        rows = len(data)
+        for i in range(rows):
+            for box in data[i]:
+                bbxad = box.area_domain()
+                grouped_batch[bbxad['symbol']].append(bbxad["text"])
+        return grouped_batch
+    
+    def __generate_symbol_indications(self, page, scale_factor, data):
+        rows = len(data)
+        for i in range(rows):
+            for box in data[i]:
+                bbxad = box.area_domain()
+                x, y, w, h = bbxad["symbol_offset"]
+
+                pdf_x1 = x * scale_factor
+                pdf_y1 = y * scale_factor
+                pdf_x2 = (x + w) * scale_factor
+                pdf_y2 = (y + h) * scale_factor
+
+                rect = pymupdf.Rect(pdf_x1, pdf_y1, pdf_x2, pdf_y2)
+                page.draw_rect(rect, color=(1, 0, 0), width=2)
+    
+    def draw_contextdata_on_pdf(self, pipeline_context, filepath, name):
+        if BasicUtils.categorize_file_type(filepath) is not FileType.PDF: return None
+        pc = pipeline_context
+        if not pc: return None
+        name = "generated_pdf" if not name else name
+
+        save_location = Path.home() / "Downloads"
+        save_as = save_location / name
+        save_as = FileOsHandler().get_unique_file(save_as, "pdf")
+
+        doc = pymupdf.open(filepath)
+        page = doc[0]
+
+        cv_image_width = pc.image_s[0].shape[1]
+        scale_factoring = page.rect.width / cv_image_width
+
+        batch = self.__generate_detected_connections(pc.combo_data)
+        batch_found = [(k, v) for k, v in batch.items()]
+
+        self.__generate_symbol_indications(page, scale_factoring, pc.combo_data)
+
+        cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 200, 20
+
+        total_items = len(batch_found)
+        if total_items > 0:
+            num_rows = ((total_items - 1) // cols) + 1
+            grid_width = cols * gap_x
+            grid_height = num_rows * gap_y
+            background_rect = pymupdf.Rect(start_x - 10, start_y - 15, start_x + grid_width + 10, start_y + grid_height + 20)
+            page.draw_rect(background_rect, color=(0, 0, 0), fill=(1, 1, 1), fill_opacity=0.9, width=1)
+
+            for index, item in enumerate(batch_found):
+                symbol_id, text_list = item
+                filtered_text = f"{symbol_id}: {', '.join(text_list)}"
+                row = index // cols
+                col = index % cols
+                item_x = start_x + (col * gap_x)
+                item_y = start_y + (row * gap_y)
+
+                page.insert_text(pymupdf.Point(item_x, item_y), filtered_text, fontsize=11, color=(1, 0, 0))
+
+        doc.save(save_as, garbage=4, deflate=True)
+        doc.close()
+    
+    def image_to_pdf(self, image, name: str):
+        if BasicUtils.categorize_file_type(image) is not FileType.IMAGE: return None
+        re.sub(r'[^\w\-_\. ]', '_', name)
+        name = "image_to_pdf" if not name else name
+        doc = pymupdf.open(image)
+        pdfbytes = doc.convert_to_pdf()
+        pdf = pymupdf.open("pdf", pdfbytes)
+        save_location = Path.home() / "Downloads"
+        save_as = save_location / name
+        save_as = FileOsHandler().get_unique_file(save_as, "pdf")
+        pdf.save(f"{save_as}.pdf")
+        pdf.close()
+        doc.close()
 
 class FileOsHandler():
     """The FileOsHandler class. It's still part of the FileHandler.
@@ -250,32 +335,36 @@ class FileOsHandler():
                 arr.append(file_path)
 
             return None if not arr else arr
-    
-    @DeprecationWarning
-    def __renew_copies_in_dir(self, target_path: str, files_to_check: list):
-        try:
-            messages = []
-            count = 0
-            currently_in_dir = self.get_files_from_dir(target_path=target_path)
+        
+    def get_unique_file(self, filepath: str, extension_type: str = None):
+        directory, filename = os.path.split(filepath)
+        name, original_ext = os.path.splitext(filename)
 
-            if not files_to_check:
-                messages.append("There were no files to check.")
-                raise Exception
+        if extension_type and not extension_type.startswith('.'):
+            extension_type = f".{extension_type}"
 
-            if currently_in_dir is None:
-                self.copy_files(files_to_check)
+        extensions_to_check = {original_ext}
+        if extension_type:
+            extensions_to_check.add(extension_type)
 
-            file_names_in_dir = [os.path.basename(file) for file in currently_in_dir]
-            file_names_in_given_list = [os.path.basename(file) for file in files_to_check]
+        if not any(os.path.exists(os.path.join(directory, f"{name}{ext}")) for ext in extensions_to_check):
+            final_ext = extension_type if extension_type else original_ext
+            return os.path.join(directory, f"{name}{final_ext}")
 
-            print(file_names_in_dir)
-            print(file_names_in_given_list)
-            for file in file_names_in_given_list:
-                if file in file_names_in_dir:
-                    count = count + 1
-
-            print(count)
-
-        except Exception:
-            print(messages)
+        counter = 1
+        while True:
+            new_name_base = f"{name} ({counter})"
+            
+            conflict = False
+            for ext in extensions_to_check:
+                check_path = os.path.join(directory, f"{new_name_base}{ext}")
+                if os.path.exists(check_path):
+                    conflict = True
+                    break
+            
+            if not conflict:
+                final_ext = extension_type if extension_type else original_ext
+                return os.path.join(directory, f"{new_name_base}{final_ext}")
+                
+            counter += 1
 
