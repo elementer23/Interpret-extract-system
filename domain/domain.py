@@ -32,17 +32,18 @@ class SymbolDetectionBox(Domain):
        
 
 class RawData(Domain):
-    __slots__=('conf', 'offset', 'symbol_offset')
+    __slots__=('conf', 'offset', 'symbol_offset', 'grid_position')
 
-    def __init__(self, text, conf, symbol_id, offset, symbol_offset):
+    def __init__(self, text, conf, symbol_id, offset, symbol_offset, grid_position):
         self.text = text
         self.conf = conf
         self.symbol_id = symbol_id
         self.offset = offset
         self.symbol_offset = symbol_offset
+        self.grid_position = grid_position
 
     def area_domain(self) -> dict:
-        return {"text": self.text, "conf": self.conf, "symbol": self.symbol_id, "offset": self.offset, "symbol_offset": self.symbol_offset}        
+        return {"text": self.text, "conf": self.conf, "symbol": self.symbol_id, "offset": self.offset, "symbol_offset": self.symbol_offset, "grid_position": self.grid_position}        
 
 class InterpretedDetection(Domain):
     __slots__=('tagnumber')

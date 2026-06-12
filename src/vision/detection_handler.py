@@ -135,6 +135,7 @@ class DetectionHandler():
 
                 for symbol_count, final_poly in enumerate(merged_polygons, start=1):
                     coords = np.array(final_poly.exterior.coords).astype(np.int32)
+                    grid_pos = self.__get_grid_position(coords, file_to_predict.shape[0], file_to_predict.shape[1])
                     merged_results.append(SymbolDetectionBox((coords, 0.80), f"{count}-{symbol_count}"))
 
                 print(f"Symbols detected: {len(merged_results)}")
@@ -146,4 +147,29 @@ class DetectionHandler():
                 context.progress_callback(percentage)
             
             context.yolo_data.append(merged_results)
+
+    
+    def __get_grid_position(self, coords, height, width):
+        """
+        determines the position of the symbol coordinates through a grid structure of 3x3
+
+        Args:
+            coords (numpy array): the coordinates of the symbols in polygon format  
+            height (int): the pixel height of the converted file
+            width (int): the pixel width of the converted file
+
+        Yields:
+            str: yields a string with the position in a basic format 'links-boven', 'midden', 'rechts-onder', etc.
+        """
+        positions = [["links-boven", "midden-boven", "rechts-boven"],
+                     ["links-midden", "midden", "rechts-midden"],
+                     ["links-onder", "midden-onder", "rechts-onder"]]
+        
+        center_x = np.mean(coords[:, 0])
+        center_y = np.mean(coords[:, 1])
+
+        col_idx = min(int(center_x / (width / 3)), 2)
+        row_idx = min(int(center_y / (height / 3)), 2)
+
+        yield positions[row_idx][col_idx]
                 

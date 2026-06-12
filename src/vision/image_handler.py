@@ -176,9 +176,6 @@ class ImageExportHandler():
             return image_color
         
         if isinstance(file, np.ndarray):
-            # if file.shape < 3:
-            #     return cv.cvtColor(file, cv.COLOR_GRAY2BGR)
-
             if file.shape[2] == 4:
                 return cv.cvtColor(file, cv.COLOR_RGBA2BGR)
             else:

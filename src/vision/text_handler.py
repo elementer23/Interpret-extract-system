@@ -41,6 +41,8 @@ class TextHandler():
         for i, yolo_box in enumerate(context.yolo_data):
             data = []
 
+            count = 0
+            batch = []
             current_image = context.image_s[i]
             grayed_image = cv.cvtColor(current_image, cv.COLOR_BGR2GRAY) if len(current_image.shape) > 2 else current_image
 
@@ -49,7 +51,7 @@ class TextHandler():
                 pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
                 x, y, w, h = cv.boundingRect(pts)
                 raw_crop = grayed_image[y:y+h, x:x+w]
-
+                
                 if raw_crop.size > 0:
                     results = self.reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False, workers=0)
 
@@ -60,18 +62,49 @@ class TextHandler():
                             offset = np.array([x, y])
                             global_pts = local_pts + offset
                             text_pts_global = global_pts.reshape((-1, 1, 2))
+
+                            grid_pos = self.__get_grid_position(text_pts_global, current_image.shape[0], current_image.shape[1])
+                            for pos in grid_pos:
+                                batch.append(pos)
                             
                             text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
                             # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
                             # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
-                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h)))
-
+                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h), batch[count]))
+                            count += 1
+                            
+            batch.clear()
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
                 context.progress_callback(percentage)
 
             context.combo_data.append(data)
+
+    def __get_grid_position(self, coords, height, width):
+        """
+        determines the position of the symbol coordinates through a grid structure of 3x3
+
+        Args:
+            coords (numpy array): the coordinates of the symbols in polygon format  
+            height (int): the pixel height of the converted file
+            width (int): the pixel width of the converted file
+
+        Yields:
+            str: yields a string with the position in a basic format 'links-boven', 'midden', 'rechts-onder', etc.
+        """
+        positions = [["links-boven", "midden-boven", "rechts-boven"],
+                     ["links-midden", "midden", "rechts-midden"],
+                     ["links-onder", "midden-onder", "rechts-onder"]]
+        
+        x, y, w, h = cv.boundingRect(coords)
+        center_x = (x + w / 2)
+        center_y = (y + h / 2)
+
+        col_idx = min(int(center_x / (width / 3)), 2)
+        row_idx = min(int(center_y / (height / 3)), 2)
+
+        yield positions[row_idx][col_idx]
     
     def read_tesseract(self, context):
         """

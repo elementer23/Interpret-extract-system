@@ -13,4 +13,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["domain", "src", "models", "data"]
+packages = ["domain", "src", "models", "data", "middleware"]

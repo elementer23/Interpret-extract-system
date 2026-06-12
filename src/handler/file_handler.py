@@ -168,7 +168,7 @@ class FileHandler():
         save_location = Path.home() / "Downloads"
         save_as = save_location / name
         save_as = FileOsHandler().get_unique_file(save_as, "pdf")
-        pdf.save(f"{save_as}.pdf")
+        pdf.save(save_as)
         pdf.close()
         doc.close()
 
