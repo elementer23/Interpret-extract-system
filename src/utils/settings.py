@@ -3,42 +3,11 @@ from utils.utilities import BasicUtils
 from enumeration.package_type import PackageType
 import re
 from typing import Any
+import os
+import pathlib
 
-__JSON = { "settings": [{
-            "default_export": "excel",
-            "export_options": [
-                "excel",
-                "json",
-                "csv"
-            ],
-            "chosen_export": "",
-            "file_selection_options": [
-                "(*.png)",
-                "(*.jpg)",
-                "(*.jpeg)",
-                "(*.webp)",
-                "(*.pdf)",
-                "(*.dwg)",
-                "(*.zip)",
-                "(*.tar)",
-                "(*.7z)"
-            ],
-            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)",
-            "custom_file_selection": "",
-            "file_selection_name": "Default",
-            "custom_file_selection_name": "",
-            "directory_path": "C:/Users/697/Documents",
-            "temp_dir_name": "export_container",
-            "package_type_s": [
-                "default",
-                "zip",
-                "7zip",
-                "tar"
-            ],
-            "chosen_package": "default",
-            "temp_files_path": "C:/Users/697/Documents",
-            "temp_files_name": "file_container"
-        }]}
+local_appdata = os.environ.get('LOCALAPPDATA')
+base_folder = pathlib.Path(f"{local_appdata}/interpret_extract_system")
 
 class Settings(object):
     """Settings class.
@@ -53,7 +22,8 @@ class Settings(object):
     def read_settings() -> None:
         """This function simply prints the settings to the terminal."""
         try:
-            with open('../src/utils/settings.json', 'r') as file:
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f'{app_folder}\\settings.json', 'r') as file:
                 data = json.load(file)
             
         except json.JSONDecodeError:
@@ -78,7 +48,8 @@ class Settings(object):
         :return Any: will return the value of the given setting or all settings, if intentionally left blank.
         """
         try:
-            with open('../src/utils/settings.json', 'r') as file:
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f'{app_folder}\\settings.json', 'r') as file:
                 data = json.load(file)
                 
         except (json.JSONDecodeError, FileNotFoundError):
@@ -137,7 +108,8 @@ class Settings(object):
         Mainly due to the current code structure.
         """
         try:
-            with open('../src/utils/settings.json', 'r') as file:
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f'{app_folder}\\settings.json', 'r') as file:
                 data = json.load(file)
 
         except json.JSONDecodeError:
@@ -156,7 +128,7 @@ class Settings(object):
                 data['settings'][0]['export_options'] = arr
 
             try:
-                with open('../src/utils/settings.json', 'w') as file:
+                with open(f'{app_folder}\\settings.json', 'w') as file:
                     json.dump(data, file, indent=4)
             
             except json.JSONDecodeError:
@@ -186,7 +158,8 @@ class Settings(object):
         Mainly due to the current structure of the code.
         """
         try:
-            with open('../src/utils/settings.json', 'r') as file:
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f'{app_folder}\\settings.json', 'r') as file:
                 data = json.load(file)
 
         except json.JSONDecodeError:
@@ -205,7 +178,7 @@ class Settings(object):
                 data['settings'][0]['package_type_s'] = arr
 
             try:
-                with open('../src/utils/settings.json', 'w') as file:
+                with open(f'{app_folder}\\settings.json', 'w') as file:
                     json.dump(data, file, indent=4)
 
             except json.JSONDecodeError:
@@ -272,7 +245,8 @@ class Settings(object):
         :param setting_name: the name of the setting to change the value of.
         """
         try:
-            with open('../src/utils/settings.json', 'r') as file:
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f'{app_folder}\\settings.json', 'r') as file:
                 data = json.load(file)
 
         except json.JSONDecodeError:
@@ -283,7 +257,7 @@ class Settings(object):
                 data['settings'][0][setting_name] = val
 
             try:
-                with open('../src/utils/settings.json', 'w') as file:
+                with open(f'{app_folder}\\settings.json', 'w') as file:
                     json.dump(data, file, indent=4)
 
             except json.JSONDecodeError:
@@ -332,15 +306,16 @@ class Settings(object):
         If any settings are added, that the user can change.
         Then the default value of that setting, should be added here as well.
         """
+
         Settings.write_to_settings(["excel", "json", "csv"], "export_options")
         Settings.write_to_settings("", "chosen_export")
         Settings.write_to_settings("", "custom_file_selection")
         Settings.write_to_settings("", "custom_file_selection_name")
-        Settings.write_to_settings("C:/Users/697/Documents", "directory_path")
+        Settings.write_to_settings(f"{base_folder}", "directory_path")
         Settings.write_to_settings("export_container", "temp_dir_name")
         Settings.write_to_settings(["default", "zip", "7zip", "tar"], "package_type_s")
         Settings.write_to_settings("default", "chosen_package")
-        Settings.write_to_settings("C:/Users/697/Documents", "temp_files_path")
+        Settings.write_to_settings(f"{base_folder}", "temp_files_path")
         Settings.write_to_settings("file_container", "temp_files_name")
 
         return "default applied"
@@ -351,11 +326,49 @@ class Settings(object):
         Will require a restart from the application, if used.
         """
         try:
-            with open("../src/utils/settings.json", "w+") as new_file:
-                json.dump(__JSON, new_file, indent=4)
+            app_folder = os.path.join(local_appdata, "interpret_extract_system")
+            with open(f"{app_folder}\\settings.json", "w+") as new_file:
+                json.dump(Settings.__JSON, new_file, indent=4)
 
         except json.JSONDecodeError:
             print("Error: Failed to encode JSON to the file.")
+
+
+    __JSON = { "settings": [{
+            "default_export": "excel",
+            "export_options": [
+                "excel",
+                "json",
+                "csv"
+            ],
+            "chosen_export": "",
+            "file_selection_options": [
+                "(*.png)",
+                "(*.jpg)",
+                "(*.jpeg)",
+                "(*.webp)",
+                "(*.pdf)",
+                "(*.dwg)",
+                "(*.zip)",
+                "(*.tar)",
+                "(*.7z)"
+            ],
+            "default_file_selection": "(*.png *.jpg *.jpeg *.webp *.pdf *.dwg *.zip *.tar *.7z)",
+            "custom_file_selection": "",
+            "file_selection_name": "Default",
+            "custom_file_selection_name": "",
+            "directory_path": f"{base_folder}",
+            "temp_dir_name": "export_container",
+            "package_type_s": [
+                "default",
+                "zip",
+                "7zip",
+                "tar"
+            ],
+            "chosen_package": "default",
+            "temp_files_path": f"{base_folder}",
+            "temp_files_name": "file_container"
+        }]}
 
         
 class PackageSettings(object):

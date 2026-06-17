@@ -10,137 +10,27 @@ label_folder = r'C:/Users/697/projecten/labeling/Big-bulk-dataset/data/labels'
 image_folder = r'C:/Users/697/projecten/labeling/Big-bulk-dataset/data/images'
 
 class IO():
+    """
+    This class hasn't been fully realized yet.
+
+    The IO class is mainly used to transfer a coco dataset from label studio,
+    to a normal yolov8 dataset. The functionalities are still static however, due to the complexity.
+
+    It basically slices all the images that have been labeled, removes the images that have no label, 
+    Uses the original json coco file where all the labels and images have been documented and creates
+    new .txt files with all the coordinates and labels of the sliced images, before removing the empty images.
+    This then creates a new dataset, which still has to be manually transferred over to a yolov8 dataset folder structure.
+    Or can be used as is, depending on how you created your map structure. 
+    """
     def __init__(self):
         pass
 
-    def __change_label_number():
-
-        with open('C:/Users/697/projecten/labeling/data/labels/fb437a33-021-1.txt') as topo_file:
-            for line in topo_file:
-                # print(line.split(" ")[0])
-                # print(line[0]),
-                match line.split(" ")[0]:
-                    case "0":
-                        print(f"0 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "1":
-                        print(f"1 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "4":
-                        print(f"2 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "5":
-                        print(f"3 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "16":
-                        print(f"4 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "17":
-                        print(f"5 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "18":
-                        print(f"6 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "19":
-                        print(f"7 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "20":
-                        print(f"8 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "21":
-                        print(f"9 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="") 
-                    case "22":
-                        print(f"10 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "23":
-                        print(f"11 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "24":
-                        print(f"12 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "30":
-                        print(f"13 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-                    case "31":
-                        print(f"14 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]}", end="")
-
-    def __change_label_number2():
-
-        with open("C:/Users/697/projecten/labeling/more data/data/labels/fb437a33-021-1.txt") as topo_file:
-            for line in topo_file:
-                # print(line.split(" ")[0])
-                # print(line[0]),
-                match line.split(" ")[0]:
-                    case "0":
-                        print(f"0 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "1":
-                        print(f"1 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "4":
-                        print(f"2 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "5":
-                        print(f"3 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "16":
-                        print(f"4 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "17":
-                        print(f"5 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "18":
-                        print(f"6 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "19":
-                        print(f"7 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "20":
-                        print(f"8 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "21":
-                        print(f"9 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="") 
-                    case "22":
-                        print(f"10 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "23":
-                        print(f"11 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "24":
-                        print(f"12 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "30":
-                        print(f"13 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-                    case "31":
-                        print(f"14 {line.split(" ")[1]} {line.split(" ")[2]} {line.split(" ")[3]} {line.split(" ")[4]} {line.split(" ")[5]} {line.split(" ")[6]} {line.split(" ")[7]} {line.split(" ")[8]}", end="")
-
-    def __change_label_name():
-        for filename in os.listdir(label_folder):
-            if filename.endswith(".txt"):
-                # 1. Decodeer de gekke tekens zoals %5C naar slashes
-                decoded_name = urllib.parse.unquote(filename)
-                
-                # 2. Pak alleen het gedeelte NA de laatste slash of backslash
-                # Dit haalt "C:\Users\...\image-0.txt" terug naar "image-0.txt"
-                new_name = decoded_name.split('\\')[-1].split('/')[-1]
-                
-                # Soms zit er nog een '.tmp' of een vraagteken voor, even opschonen
-                if '?' in new_name:
-                    new_name = new_name.split('?')[-1]
-                if '=' in new_name:
-                    new_name = new_name.split('=')[-1]
-
-                old_file = os.path.join(label_folder, filename)
-                new_file = os.path.join(label_folder, new_name)
-                
-                try:
-                    os.rename(old_file, new_file)
-                    print(f"Hernoemd: {new_name}")
-                except Exception as e:
-                    print(f"Fout bij {filename}: {e}")
-
-        print("Klaar!")
-
-    def __remove_unnecessary_images():
-
-        label_list = os.listdir(label_folder)
-
-        image_list = os.listdir(image_folder)
-
-        label_name_list = []
-        new_list = []
-
-        for label_name in label_list:
-            label_name_list.append(os.path.basename(label_name).split('.')[0])
-
-        for file in image_list:
-            if os.path.basename(file).split('.')[0] not in label_name_list:
-                new_list.append(file)
-
-
-        for f in new_list:
-            try:
-                os.remove(f"{image_folder}/{f}")
-            except Exception as e:
-                print(e)
-
     def slice_sahi(self, json_to_change: str, cleaned_json_output: str, dir_images_to_slice: str, output_archive_name_of_sliced_images: str, width_in_pix: int = False,
                    slicing_width: int = False, slicing_height: int = False):
+        
+        """
+        This function hasn't been fully realized yet.
+        """
 
         input_json = json_to_change
         cleaned_json = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/data/{cleaned_json_output}.json'
@@ -224,6 +114,9 @@ class IO():
     # slice_sahi()
 
     def __coco_labeling(self, json_coco: str):
+        """
+        This function hasn't been fully realized yet.
+        """
         tiled_json = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/tiled_annotations.json_coco.json'
         output_label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/labels/'
 
@@ -260,6 +153,9 @@ class IO():
         self.__coco_jpg_removal(json_coco)
 
     def __coco_jpg_removal(self, dir_name: str):
+        """
+        This function hasn't been fully realized yet.
+        """
         image_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/'
         label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/labels/'
 

@@ -4,16 +4,41 @@ from collections import defaultdict
 import math
 
 class Interpreter():
+    """
+    The interpreter class.
+    Interpretes the connection between symbol, lettercode and tagnumber.
+    Is Rather complex, but also rather basic. It checks which coordinates
+    are closest to one another, based from top to bottom.
+    This interpreter isn't flawless and could potentially skip connections, once the amount of
+    symbols exceeds more than 3, within a quadrant of coordinates. 
+
+    The connections haven't been made within the raw data, but the information is far more reliable.
+    It simply connects a symbol id to a text that has been found, within the quadrant of coordinates.
+    Allowing a better view of what has been found and where it is.
+
+    This class and it's functions could become far more potent and precise, but this progress is put to a halt.
+    Due to the current understanding of coordinates and calculations. (Also due to the lack of time while currently writing this.)
+
+    This Interpreter only works with raw combo data. Which is created when using a full pipeline build. 
+    (The raw combo data is the raw data that is being talked about)
+    """
     def __init__(self, raw_combo_data: list):
         self.raw_collection = raw_combo_data
         self.collection = []
 
     def fetch(self) -> list:
+        """
+        This function fetches the interpreted data
+        """
         self.read()
         if self.collection:
             return self.collection
 
     def read(self) -> bool | None:
+        """
+        This function reads the raw data and assigns the data into groups
+        of symbols and texts. 
+        """
         if not self.raw_collection:
             return False
         for i in range(len(self.raw_collection)):
@@ -43,10 +68,16 @@ class Interpreter():
             self.collection.append(result)
 
     def __center(self, bbox):
+        """
+        This function calculates the center of a bounding box
+        """
         x, y, w, h = bbox
         return (x + w / 2, y + h / 2)
     
     def __dst(self, p1, p2):
+        """
+        Ths function calculates the distance between two points
+        """
         return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     
     def __build(self, symbol_list: list, text_list: list, max_dst: int = 100) -> list:

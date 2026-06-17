@@ -6,6 +6,7 @@ from shapely.strtree import STRtree
 import numpy as np
 from domain.domain import SymbolDetectionBox
 import cv2 as cv
+from models.models import Models
 
 class DetectionHandler():
     """DetectionHandler class.
@@ -15,9 +16,21 @@ class DetectionHandler():
     """
     def __init__(self):
         super().__init__()
-        self.model = YOLO("core_pid_model.pt").to(DEVICE)
+        self.model = YOLO(Models().get()).to(DEVICE)
 
     def _tile_generator(self, file_to_predict, tile_size, overlap):
+        """
+        Generates tiles of the given file. 
+        640x640 or whatever is left, with an overlap of 100
+        to prevent unnecessary cut-offs. 
+
+        :type file_to_predict: Any
+        :param file_to_predict: the file to generate the tiles with.
+        :type tile_size: int
+        :param tile_size: the size of what the tile should be.
+        :type overlap: int
+        :param overlap: the overlapping size the tile is allowed to be, preventing cut-offs. 
+        """
 
         h, w = file_to_predict.shape[:2]
 
@@ -38,6 +51,10 @@ class DetectionHandler():
 
 
     def _predict_batch(self, tiles, offsets, relevant_list):
+        """
+        This function predicts the symbols on a batch of tiles and
+        retrieves the offset of each symbol, along with the confidence the ai-model had on that symbol.
+        """
         results = self.model.predict(tiles, imgsz=640, conf=0.15, batch=len(tiles), verbose=False, device="cpu")
 
         for i, r in enumerate(results):
@@ -62,7 +79,7 @@ class DetectionHandler():
         into a specific process. An image is split apart into tiles from 640px by 640px, with an overlap of 100px.
         Tiles below a certain size are skipped and tiles with almost nothing on them are skipped as well.
         These tiles and their offsets are then gathered. The gathered tiles are given to the model, 
-        to start its prediction process in batches of 16. After the prediction process has finished,
+        to start its prediction process in batches of 4. After the prediction process has finished,
         the coördinates of each piece of a symbol is then allocated on the specific offset of the tile it was found on.
         Each offset is then added to the other (x=x, y=y), so the coördinates that were found on the tile
         can correlate to the corresponding global coördinates of the entire image. 
@@ -135,7 +152,6 @@ class DetectionHandler():
 
                 for symbol_count, final_poly in enumerate(merged_polygons, start=1):
                     coords = np.array(final_poly.exterior.coords).astype(np.int32)
-                    grid_pos = self.__get_grid_position(coords, file_to_predict.shape[0], file_to_predict.shape[1])
                     merged_results.append(SymbolDetectionBox((coords, 0.80), f"{count}-{symbol_count}"))
 
                 print(f"Symbols detected: {len(merged_results)}")
@@ -151,7 +167,8 @@ class DetectionHandler():
     
     def __get_grid_position(self, coords, height, width):
         """
-        determines the position of the symbol coordinates through a grid structure of 3x3
+        determines the position of the symbol coordinates through a grid structure of 3x3.
+        Has become obsolete for this class, but can still be used if necessary. 
 
         Args:
             coords (numpy array): the coordinates of the symbols in polygon format  

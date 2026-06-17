@@ -29,20 +29,44 @@ class Exporter():
         self.dir_name = Settings.retrieve_settings('temp_dir_name')
 
     def __save_val(self, val):
+        """
+        This function is used to filter out any symbols, that could cause
+        the value inside of an excel file to create a calculation.
+        """
         if isinstance(val, str) and val.startswith(('=', '+', '-', '@')):
             return f"'{val}"
         return val
     
     def __insert_metadata(self, filepaths: list, sheet):
+        """
+        This function simply inserts the metadata from the pdf file,
+        into an excel sheet.
+        """
         for file_name in filepaths:
-            sheet.append([f"{self.__save_val(file_name)}"])
+
+            sheet.append(["title", "creator", "creationDate", "modDate",
+                        "ISO216_A", "pdfWidth", "pdfHeight", "pdfWidth_mm", "pdfHeight_mm",
+                        "pdfWidth_px", "pdfHeight_px", "scaled_height", "scaled_width", "file_name"])
 
             bundle = MetaDataCreator(file_name).get()._get()
-            for k, v in bundle.items():
-                sheet.append([f"{k}", f"{self.__save_val(v)}"])
+            meta_values = []
+            for v in bundle.values():
+                meta_values.append(f"{self.__save_val(v)}")
+            
+            meta_values.append(f"{self.__save_val(file_name)}")
+            sheet.append(meta_values)
+            meta_values.clear()
 
 
     def export_to_excel(self, data_to_enter: list, origin_file_s: list) -> None:
+        """
+        This function exports the tesseract data, raw data, interpreted data and metadata into the excel file.
+
+        :type data_to_enter: list
+        :param data_to_enter: the data to enter into the excel file (amount depends on how many files are extracted).
+        :type origin_file_s: list
+        :param origin_file_s: list with the original file paths that were used for extraction.
+        """
         wb = Workbook()
         sheet1 = wb.active
         sheet1.title = "Tesseract"
@@ -88,12 +112,12 @@ class Exporter():
             wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
 
     def export_to_json(self, data_to_enter: list, origin_file_s: list) -> None:
-        """Function to export text handler and detection handler data to json files.
+        """This function exports the tesseract data, raw data, interpreted data and metadata into a json file.
         
         :type data_to_enter: list
         :param data_to_enter: the data to enter into the json file(s) (amount depends on how many files are extracted).
         :type origin_file_s: list
-        :param origin_file_s: list with the original file names that were used for extraction.
+        :param origin_file_s: list with the original file paths that were used for extraction.
         """
         grouped_collection = defaultdict(list)
         for data in data_to_enter:
@@ -149,12 +173,12 @@ class Exporter():
                 print(ex)
 
     def export_to_csv(self, data_to_enter: list, origin_file_s: list) -> None:
-        """Function to export text handler and detection handler data to csv files.
+        """This function exports the tesseract data, raw data, interpreted data and metadata into a csv file.
         
         :type data_to_enter: list
         :param data_to_enter: the data to enter into the csv file(s) (amount depends on how many files are extracted).
         :type origin_file_s: list
-        :param origin_file_s: list with the original file names that were used for extraction.
+        :param origin_file_s: list with the original file paths that were used for extraction.
         """
         try:
             with open(f"{self.dir_path}/{self.dir_name}/output.csv", "w", newline='') as file:

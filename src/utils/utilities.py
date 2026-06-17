@@ -190,6 +190,31 @@ class BasicUtils(object):
             return arr
         
     @staticmethod
+    def strip_all_except_numbers(val: str | list) -> str | list:
+        """Strips all the characters and special characters, from a singular value or all values in a list and returns the numbers.
+        Will return an empty list or str, if all given values only consist out of characters and special characters.
+
+        :type val: string | list
+        :param val: the parameter that will be stripped (add it as a copy [:] if necessary).
+
+        :return str | list:
+        """
+        arr = []
+        if not val:
+            return ""
+        
+        if isinstance(val, str):
+            result = re.sub(r"[^0-9]", "", val)
+            
+            return result
+        elif isinstance(val, list):
+            for n in val:
+                result = re.sub(r"[^0-9]", "", n)
+                arr.append(result)
+
+            return arr
+        
+    @staticmethod
     def first_upper_case(s: str) -> str:
         """Turns the first letter in the given parameter into an uppercase (if the first character is a letter).
         
@@ -239,7 +264,7 @@ class BasicUtils(object):
     def categorize_file_type(file_data: list | str) -> FileType | list[FileType]:
         """Caterogizes the file type(s) of the given value(s).
         Will return UNKNOWN by default if the value is empty.
-        Checks by default on 'png', 'webp', 'jpg', 'jpeg', 'json', 'csv', 'xlsx', 'xls', 'docx', 'txt' and 'pdf'.
+        Checks by default on 'png', 'webp', 'jpg', 'jpeg', 'json', 'csv', 'xlsx', 'xls', 'docx', 'txt', 'doc' and 'pdf'.
         New one's have to be added manually. Or else they'll be caterogized as UNKNOWN.
 
         :type file_data: string | list
@@ -253,7 +278,7 @@ class BasicUtils(object):
         file_arr = []
         image_arr = [".png", ".webp", ".jpg", ".jpeg"]
         template_arr = [".json", ".csv", ".xlsx", ".xls"]
-        txt_arr = [".docx", ".txt"]
+        txt_arr = [".docx", ".txt", ".doc"]
         pdf = ".pdf"
 
         if isinstance(file_data, str):

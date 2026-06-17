@@ -63,9 +63,6 @@ class Decompress():
         self.pwd = pwd
         self.progress_callback = progress_callback
         self.extract()
-        
-    def __decrypt(self):
-        pass
 
     def extract(self):
         """Extracts the files from the compressed file or copies the given files to the given directory"""

@@ -90,6 +90,10 @@ class FileHandler():
     
 
     def __generate_detected_connections(self, data):
+        """
+        Generates a dictionary and lists the texts that belong to a symbol.
+        Creating a single batch for a file.
+        """
         grouped_batch = defaultdict(list)
 
         rows = len(data)
@@ -100,6 +104,10 @@ class FileHandler():
         return grouped_batch
     
     def __generate_symbol_indications(self, page, scale_factor, data):
+        """
+        generates the indications in the form of a rectangle, 
+        showing which symbols have been found and are marked.
+        """
         rows = len(data)
         for i in range(rows):
             for box in data[i]:
@@ -115,6 +123,10 @@ class FileHandler():
                 page.draw_rect(rect, color=(1, 0, 0), width=2)
     
     def draw_contextdata_on_pdf(self, pipeline_context, filepath, name):
+        """
+        This function draws the data that originates from the pipeline, onto 
+        a copy of the given pdf. 
+        """
         if BasicUtils.categorize_file_type(filepath) is not FileType.PDF: return None
         pc = pipeline_context
         if not pc: return None
@@ -159,6 +171,9 @@ class FileHandler():
         doc.close()
     
     def image_to_pdf(self, image, name: str):
+        """
+        This function simply converts an image to a pdf.
+        """
         if BasicUtils.categorize_file_type(image) is not FileType.IMAGE: return None
         re.sub(r'[^\w\-_\. ]', '_', name)
         name = "image_to_pdf" if not name else name
@@ -337,6 +352,15 @@ class FileOsHandler():
             return None if not arr else arr
         
     def get_unique_file(self, filepath: str, extension_type: str = None):
+        """
+        This function acts like the file_name (1).extension from windows.
+        Checking whether a given name is already present within the directory.
+        Checks for the same extension, once the 'extension_type' parameter is left empty.
+        Will check for a file of the same name and the same extension type, when trying to convert
+        from one extension to another.
+         
+        Will check for a file of the same name and the given 'extension_type' if an extension is given.
+        """
         directory, filename = os.path.split(filepath)
         name, original_ext = os.path.splitext(filename)
 

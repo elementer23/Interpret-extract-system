@@ -7,10 +7,25 @@ name = "interpret-extract-system"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11, <3.13"
 dependencies = [
+    "easyocr>=1.7.2",
+    "openpyxl>=3.1.5",
+    "psutil>=7.2.2",
+    "py7zr>=1.1.0",
+    "pymupdf>=1.27.2.3",
+    "pyqt6>=6.11.0",
+    "pytesseract>=0.3.13",
     "requests>=2.34.2",
+    "sahi>=0.12.1",
+    "ultralytics>=8.4.68",
 ]
 
+[project.scripts]
+start-app = "src.main:main"
+
 [tool.setuptools]
-packages = ["domain", "src", "models", "data", "middleware"]
+packages = { find = {} }
+
+[tool.setuptools.package-data]
+models = ["*.pt", "**/*.pt"]

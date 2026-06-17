@@ -17,6 +17,9 @@ from gui.events.thread_handler import ThreadHandler
 from handler.file_handler import FileOsHandler
 
 class ConvertDatasetWindow(QWidget):
+    """
+    Isn't finished yet.
+    """
     def __init__(self):
         super().__init__()
 

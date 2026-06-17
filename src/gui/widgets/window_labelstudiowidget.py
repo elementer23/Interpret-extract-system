@@ -3,15 +3,13 @@ from middleware.label_studio_controller import LabelStudioController
 from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
-    QStyle,
     QVBoxLayout,
     QWidget,
-    QFileDialog,
     QLineEdit,
     QGroupBox,
-    QFormLayout,
-    QMessageBox
+    QFormLayout
 )
+from utils.config import Config
 
 class LabelStudioWindow(QWidget):
     def __init__(self):
@@ -30,13 +28,13 @@ class LabelStudioWindow(QWidget):
 
         self.label = QLabel("File chosen:")
 
+        self.button = QPushButton("login")
+        self.button.setDefault(True)
+        self.button.clicked.connect(self.login)
+
         self.email_input = QLineEdit()
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-
-        self.button = QPushButton("login")
-        self.button.setEnabled(True)
-        self.button.clicked.connect(self.login)
 
         form_layout.addRow(QLabel("email:"), self.email_input)
         form_layout.addRow(QLabel("password:"), self.password_input)
@@ -48,26 +46,8 @@ class LabelStudioWindow(QWidget):
 
     def login(self):
         if self.email_input.text() and self.password_input.text():
-            b, v = self.label_studio_controller.label_studio_free_port(8080)
-            if not b:
-                if self.__show_port_warning(8080, v):
-                    return
-
-            self.label_studio_controller.label_studio_login(self.email_input.text(), self.password_input.text())
-
-
-    def __show_port_warning(self, port, process_name):
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Icon.Warning)
-        msg.setWindowTitle("Port in use!")
-        msg.setText(f"Can't start label studio on port: {port}")
-        msg.setInformativeText(
-            f"The requested port is momentarily used by process: '{process_name}'.\n\n"
-            "Close the process manually or change the port settings."
-        )
-        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-        if msg.exec():
-            return True
+            if self.label_studio_controller.label_studio_free_port(int(Config.get("port"))):
+                self.label_studio_controller.label_studio_login(self.email_input.text(), self.password_input.text())
 
     def closeEvent(self, event):
         self.label_studio_controller.close()

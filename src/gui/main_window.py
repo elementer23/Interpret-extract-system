@@ -26,6 +26,7 @@ import os
 from gui.widgets.window_showplotwidget import PlotWindow
 from gui.events.thread_handler import ThreadHandler
 from core.interpreter import Interpreter
+from error.error_hub import ErrorHub
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -127,6 +128,8 @@ class MainWindow(QMainWindow):
         self.threadhandler.func_finished.connect(self.progressbar.setValue)
         self.threadhandler.event_finished.connect(self.event_has_ended)
 
+        ErrorHub.get().error_raised.connect(self._handle_error)
+
     def run_func(self, fn, fn_out, *args, **kwargs):
 
         self.count_active_threads += 1
@@ -142,6 +145,16 @@ class MainWindow(QMainWindow):
             self.progressbar.setVisible(False)
             self.progressbar.setTextVisible(False)
             self.progressbar.setValue(0)
+
+    def _handle_error(self, message: str, error_type: str):
+        match error_type:
+            case "critical":
+                QMessageBox.critical(self, "critical", message)
+            case "warning":
+                QMessageBox.warning(self, "warning", message)
+            case "information":
+                QMessageBox.information(self, "information", message)
+            
 
     def open_file_dialog(self):
         filter = Settings.retrieve_settings()

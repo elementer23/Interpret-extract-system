@@ -3,10 +3,11 @@ from PyQt6.QtGui import QAction, QIcon, QKeySequence
 from PyQt6.QtWidgets import (QMenuBar, QStatusBar)
 from gui.widgets.window_settingswidget import SettingsWindow
 from gui.widgets.window_exportimagewidget import ExportImageWindow
-from gui.widgets.window_convertdatasetwidget import ConvertDatasetWindow
+# from gui.widgets.window_convertdatasetwidget import ConvertDatasetWindow
 from gui.widgets.window_imageto_pdfwidget import ImageToPDFWindow
 from gui.widgets.window_generate_extracteddatawidget import GenerateExtractedDataPDF
 from gui.widgets.window_labelstudiowidget import LabelStudioWindow
+from gui.widgets.window_configwidget import ConfigWindow
 import atexit
 
 class CustomMenu(QMenuBar):
@@ -18,6 +19,11 @@ class CustomMenu(QMenuBar):
         open_label_studio.setShortcut(QKeySequence("Ctrl+l"))
         open_label_studio.triggered.connect(self.open_label_studio_window)
 
+        open_config_settings = QAction("&open config", self)
+        open_config_settings.setStatusTip("configuration")
+        open_config_settings.setShortcut(QKeySequence("Ctrl+Shift+o"))
+        open_config_settings.triggered.connect(self.open_config_settings_window)
+
         open_settings = QAction("&open settings", self)
         open_settings.setStatusTip("open the settings")
         open_settings.setShortcut(QKeySequence("Ctrl+o"))
@@ -28,10 +34,10 @@ class CustomMenu(QMenuBar):
         open_export_image.setShortcut(QKeySequence("Ctrl+Shift+i"))
         open_export_image.triggered.connect(self.open_export_image_window)
 
-        open_coco_converter = QAction("&coco to yolo", self)
-        open_coco_converter.setStatusTip("convert a coco dataset to yolo dataset")
-        open_coco_converter.setShortcut(QKeySequence("Ctrl+Shift+c"))
-        open_coco_converter.triggered.connect(self.open_coco_converter_window)
+        # open_coco_converter = QAction("&coco to yolo", self)
+        # open_coco_converter.setStatusTip("convert a coco dataset to yolo dataset")
+        # open_coco_converter.setShortcut(QKeySequence("Ctrl+Shift+c"))
+        # open_coco_converter.triggered.connect(self.open_coco_converter_window)
 
         open_image_to_pdf = QAction("&image to pdf", self)
         open_image_to_pdf.setStatusTip("convert image to pdf")
@@ -52,7 +58,10 @@ class CustomMenu(QMenuBar):
         options_convertmenu.addActions([open_image_to_pdf, open_generate_data_pdf])
 
         training_menu = self.addMenu("&Training")
-        training_menu.addActions([open_label_studio, open_coco_converter])
+        training_optionsmenu = training_menu.addMenu("options")
+        training_menu.addActions([open_label_studio])
+        # training_menu.addActions([open_label_studio, open_coco_converter])
+        training_optionsmenu.addActions([open_config_settings])
 
     def open_insert_window(self, window):
         if window.isVisible():
@@ -68,9 +77,9 @@ class CustomMenu(QMenuBar):
         self.export_image_window = ExportImageWindow()
         self.export_image_window.show()
 
-    def open_coco_converter_window(self):
-        self.coco_converter_window = ConvertDatasetWindow()
-        self.coco_converter_window.show()
+    # def open_coco_converter_window(self):
+    #     self.coco_converter_window = ConvertDatasetWindow()
+    #     self.coco_converter_window.show()
 
     def open_image_to_pdf_window(self):
         self.image_to_pdf_window = ImageToPDFWindow()
@@ -79,6 +88,10 @@ class CustomMenu(QMenuBar):
     def open_generate_data_pdf_window(self):
         self.generate_data_pdf_window = GenerateExtractedDataPDF()
         self.generate_data_pdf_window.show()
+
+    def open_config_settings_window(self):
+        self.config_window = ConfigWindow()
+        self.config_window.show()
 
     def open_label_studio_window(self):
         self.label_studio_window = LabelStudioWindow()

@@ -70,6 +70,10 @@ class ImageHandler():
     
 
     def __generate_symbol_connection(self, data):
+        """
+        This function generates the connections between a symbol and the found texts,
+        before returning it in batches.
+        """
         batch = []
         
         rows = len(data)
@@ -82,12 +86,20 @@ class ImageHandler():
         return batch    
     
     def __generate_flat_space(self, start_y, gap_y, cols, total_items, image):
+         """
+         This function generates a flat space on the image, depending on how many symbols and
+         texts have been found.
+         """
          if total_items > 0:
             num_rows = ((total_items - 1) // cols) + 1
             flat_height = start_y + (num_rows * gap_y) + 20
             cv.rectangle(image, (0, 0), (image.shape[1], int(flat_height)), (255, 255, 255), cv.FILLED)
             
     def draw_detection_box(self, pipeline_context):
+        """
+        This function draws the detected boxes from the found symbols,
+        along with the symbol id's and their corresponding texts.
+        """
         pc = pipeline_context
         arr = []
 
