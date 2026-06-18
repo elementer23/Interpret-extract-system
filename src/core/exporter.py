@@ -9,6 +9,7 @@ from handler.file_handler import FileOsHandler
 import cv2 as cv
 from collections import defaultdict
 from core.build_metadata import MetaDataCreator
+from error.error_hub import ErrorHub
 
 #Register the package to prevent register and threading problems for later on.
 try:
@@ -108,6 +109,7 @@ class Exporter():
             self.__insert_metadata(origin_file_s, sheet4)
         except TypeError as tp:
             print(tp)
+            ErrorHub.error_msg(f"Something went wrong while trying to export to excel. '{tp}'", "warning")
         else:
             wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
 
@@ -165,12 +167,14 @@ class Exporter():
                 json.dump(_json, file, ensure_ascii=False, indent=4)
         except FileNotFoundError:
             print("The directory to export too, does not exist. reverting to default, attempting once more.")
+            ErrorHub.error_msg("The directory to export too, does not exist. reverting to default, attempting once more.", "information")
             FileOsHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
             try:
                 with open(file_path, "w", encoding='utf-8') as file:
                     json.dump(_json, file, ensure_ascii=False, indent=4)
             except json.JSONDecodeError as ex:
                 print(ex)
+                ErrorHub.error_msg(f"Something went wrong while trying to create a json file after the first attempt. '{ex}'", "critical")
 
     def export_to_csv(self, data_to_enter: list, origin_file_s: list) -> None:
         """This function exports the tesseract data, raw data, interpreted data and metadata into a csv file.
@@ -234,6 +238,7 @@ class Exporter():
                             
         except FileNotFoundError:
             print("The directory to export too, does not exist. reverting to default, attempting once more.")
+            ErrorHub.error_msg("The directory to export too, does not exist. Reverting to default, try again.", "information")
             FileOsHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
     
     def execute_export(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:

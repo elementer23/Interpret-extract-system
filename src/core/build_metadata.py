@@ -63,8 +63,8 @@ class MetaDataCreator():
                 else:
                     bundle.update({key: metadata[key]}) if metadata[key] else bundle.update({key: None}) 
 
-            bundle['creationDate'] = self.__normalize_pdf_date(bundle['creationDate'])
-            bundle['modDate'] = self.__normalize_pdf_date(bundle['modDate'])
+            bundle['creationDate'] = self.__normalize_pdf_date(bundle['creationDate']) if self.__normalize_pdf_date(bundle['creationDate']) else None
+            bundle['modDate'] = self.__normalize_pdf_date(bundle['modDate']) if self.__normalize_pdf_date(bundle['modDate']) else None
 
             bundle.update({"ISO216_A": f, "pdfWidth": round(page_width), "pdfHeight": round(page_height),
                            "pdfWidth_mm": round(page_width_mm), "pdfHeight_mm": round(page_height_mm),

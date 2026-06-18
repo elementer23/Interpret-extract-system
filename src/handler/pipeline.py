@@ -1,6 +1,7 @@
 from utils.utilities import BasicUtils as u
 from vision.text_handler import TextHandler
 from enumeration.file_type import FileType
+from error.error_hub import ErrorHub
 
 class PipeContext():
     """PipeContext class. 
@@ -82,6 +83,7 @@ class Pipeline():
 
         except Exception:
             print("The file or files weren't compatible extensions, choose a pdf instead.")
+            ErrorHub.error_msg("The file or files weren't compatible extensions, choose a pdf instead.", "information")
             return None
         else:
             for handler in class_handlers:

@@ -2,6 +2,7 @@ import time
 from gui.events.worker import Worker
 from typing import Any
 from PyQt6.QtCore import QThreadPool, QObject, pyqtSignal
+from error.error_hub import ErrorHub
 
 class ThreadHandler(QObject):
     """Thread Handler.
@@ -36,11 +37,13 @@ class ThreadHandler(QObject):
 
     def __event_error(self, error: tuple):
         print("event error thread handler")
+        ErrorHub.error_msg("Something went wrong, check the terminal prints in the code.", "critical")
         for err in error:
             print(err)
 
     def __event_result(self, result):
         print(f"{result}")
+        ErrorHub.error_msg(f"{result}", "information")
 
     def run_event(self, fn, fn_out: Any | None, *args, **kwargs):
         """Runs the given event, by initializing a new Worker and adding them to the threadpool.

@@ -102,7 +102,8 @@ class GenerateExtractedDataPDF(QWidget):
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
         context = builder.run(builder.handler, self.file_path[:], progress_callback=update_progressbar)
 
-        FileHandler().draw_contextdata_on_pdf(context, self.file_path[0], self.name_file_to.text())
+        if context is not None:
+            FileHandler().draw_contextdata_on_pdf(context, self.file_path[0], self.name_file_to.text())
 
 
     def convert_output(self, data):

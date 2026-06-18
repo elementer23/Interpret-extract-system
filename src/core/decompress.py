@@ -6,6 +6,7 @@ import tarfile
 import os
 from handler.file_handler import FileOsHandler
 from utils.utilities import BasicUtils, FileType
+from error.error_hub import ErrorHub
 
 BLOCK_SIZE = 8192
 
@@ -99,6 +100,7 @@ class Decompress():
 
         except Exception as ex:
             print("Exception:", ex)
+            ErrorHub.error_msg("Something went wrong while trying to extract an archive or trying to add a file", "warning")
             return None
 
 
@@ -133,7 +135,7 @@ class Decompress():
                 library["non-compressed"].append(file)
                 continue
 
-            print(f"File {file} is invalid.")
+            ErrorHub.error_msg(f"File {file} is invalid.", "warning")
             return False
     
         return library if library else False

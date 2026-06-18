@@ -8,6 +8,7 @@ import pathlib
 from utils.settings import Settings
 from collections import defaultdict
 import re
+from error.error_hub import ErrorHub
 
 class FileHandler():
     """FileHandler class, used for handling the process of pdf to image conversion."""
@@ -49,6 +50,7 @@ class FileHandler():
                     context.progress_callback(percentage)
             except Exception as ex:
                 print(ex)
+                ErrorHub.error_msg(f"Something went wrong: '{ex}'", "warning")
                 return
             finally:
                 doc.close()        
@@ -255,6 +257,7 @@ class FileOsHandler():
 
         except Exception as ex:
             print("Exception:", ex)
+            ErrorHub.error_msg(f"Something went wrong, while trying to copy files: '{ex}'", "warning")
 
     def delete_file(self, file: str):
         """A function to delete a single file, from the main file container.
