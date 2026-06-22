@@ -30,32 +30,31 @@ class FileHandler():
 
         for i in range(amount_of_files):
             try:
-                doc = pymupdf.open(context.image_s[i])
-                for page in doc:
-                    zoom = 300 / 72
-                    mat = pymupdf.Matrix(zoom, zoom)
-                    pix = page.get_pixmap(matrix=mat)
+                with pymupdf.open(context.image_s[i]) as doc:
+                    if len(doc) > 0:
+                        page = doc[0]
+                        zoom = 300 / 72
+                        mat = pymupdf.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat)
 
-                    np_buffer = np.frombuffer(pix.samples, dtype=np.uint8)
+                        np_buffer = np.frombuffer(pix.samples, dtype=np.uint8).copy()
+                        height, width, n = pix.height, pix.width, pix.n
+                        pix = None
 
-                    if pix.n == 4:
-                        np_buffer = np_buffer.reshape(pix.height, pix.width, 4)
-                    else:
-                        np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
+                        np_buffer = np_buffer.reshape(height, width, n)
 
-                    context.image_s[i] = np_buffer
+                        context.image_s[i] = np_buffer
+                        
                 if context.progress_callback:
                     current_file = i + 1
                     percentage = int((current_file / amount_of_files) * 100)
                     context.progress_callback(percentage)
             except Exception as ex:
                 print(ex)
-                ErrorHub.error_msg(f"Something went wrong: '{ex}'", "warning")
-                return
-            finally:
-                doc.close()        
+                ErrorHub.error_msg(f"Something went wrong during PDF processing: '{ex}'", "warning")
+                return       
 
-    def conversion(self, file_s: list) -> list:
+    def conversion(self, file_s: list, progress_callback=None):
         """The conversion function, which is essentially the same as the process function in filehandler.
         This one accepts both images and pdfs however, due to having to accept images and pdfs to convert.
 
@@ -64,32 +63,39 @@ class FileHandler():
 
         :return list: a list of converted pdfs and natural images.
         """
-        arr = []
-        for i in range(len(file_s)):
+        if progress_callback:
+            progress_callback(0)
+
+        amount_of_files = len(file_s)
+        for i in range(amount_of_files):
             
-            if BasicUtils.categorize_file_type(file_s[i]) is FileType.IMAGE:
-                arr.append(file_s[i])
-                continue
+            try:
+                if BasicUtils.categorize_file_type(file_s[i]) is FileType.IMAGE:
+                    return file_s[i]
+            
+                with pymupdf.open(file_s[i]) as doc:
+                    if len(doc) > 0:
+                        page = doc[0]
+                        zoom = 300 / 72
+                        mat = pymupdf.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat)
 
-            doc = pymupdf.open(file_s[i])
-            for page in doc:
-                zoom = 300 / 72
-                mat = pymupdf.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
+                        np_buffer = np.frombuffer(pix.samples, dtype=np.uint8).copy()
+                        height, width, n = pix.height, pix.width, pix.n
+                        pix = None
 
-                np_buffer = np.frombuffer(pix.samples, dtype=np.uint8)
+                        np_buffer = np_buffer.reshape(height, width, n)
 
-                if pix.n == 4:
-                    np_buffer = np_buffer.reshape(pix.height, pix.width, 4)
-                else:
-                    np_buffer = np_buffer.reshape(pix.height, pix.width, 3)
+                        if progress_callback:
+                            current_file = i + 1
+                            percentage = int((current_file / amount_of_files) * 100)
+                            progress_callback(percentage)
 
-                arr.append(np_buffer)
-        
-            doc.close()
-
-        return arr        
-    
+                        return np_buffer  
+            except Exception as ex:      
+                print(ex)
+                ErrorHub.error_msg(f"Something went wrong during convert processing: '{ex}'", "warning")
+                return None
 
     def __generate_detected_connections(self, data):
         """

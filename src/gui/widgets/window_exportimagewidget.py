@@ -16,11 +16,13 @@ from PyQt6.QtWidgets import (
 )
 from handler.file_handler import FileHandler, FileOsHandler
 from vision.image_handler import ImageExportHandler
-from utils.settings import Settings
+from utils.settings import Settings, PackageSettings
 from utils.utilities import BasicUtils, FileType
 from core.decompress import Decompress
 import os
 from gui.events.thread_handler import ThreadHandler
+from error.error_hub import ErrorHub
+from core.exporter import Exporter 
 
 class ExportImageWindow(QWidget):
     def __init__(self):
@@ -223,20 +225,18 @@ class ExportImageWindow(QWidget):
 
         directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
 
-        convert_ops = {}
-        convert_ops.update({"color_type": self.combobox_color_type.currentText()})
-        convert_ops.update({"image_type": self.combobox_image_type.currentText()})
-        convert_ops.update({"save_location": directory})
-        convert_ops.update({"file_name": "image"})
-        convert_ops.update({"archive_name": self.save_as.text()})
-
-        encryption = self.encryption_input.text() if len(self.encryption_input.text()) > 0 else None
-        
-        convert_ops.update({"export_type": self.combobox_export_type.currentText()})
-        convert_ops.update({"encryption": encryption})
-        convert_ops.update({"effect_type": self.combobox_effect_type.currentText()})
-        convert_ops.update({"tile_size": int(self.tile_size_input.text())})
-        convert_ops.update({"tile_overlap": int(self.tile_overlap_input.text())})
+        convert_ops = {
+            "color_type": self.combobox_color_type.currentText(),
+            "image_type": self.combobox_image_type.currentText(),
+            "save_location": directory,
+            "file_name": "image",
+            "archive_name": self.save_as.text(),
+            "export_type": self.combobox_export_type.currentText(),
+            "encryption": self.encryption_input.text() if len(self.encryption_input.text()) > 0 else None,
+            "effect_type": self.combobox_effect_type.currentText(),
+            "tile_size": int(self.tile_size_input.text()),
+            "tile_overlap": int(self.tile_overlap_input.text())
+        }
 
         FileOsHandler().create_dir(convert_ops['save_location'], convert_ops['archive_name'])
         FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
@@ -246,28 +246,53 @@ class ExportImageWindow(QWidget):
             if progress_callback:
                 progress_callback.emit(percentage)
 
-        Decompress(directory=target_path, file_s=self.files, progress_callback=update_progressbar)
+        cls = Decompress(directory=target_path, file_s=self.files, progress_callback=update_progressbar)
+
+        if cls is None:
+            return "failed to decompress files or files are invalid. Try again."
 
         files = FileOsHandler().get_files_from_dir(target_path=target_path)
         compatible_files = BasicUtils.maintain_compatible_extensions(files, FileType.PDF, FileType.IMAGE)
 
-        c_file = FileHandler().conversion(compatible_files)
+        if not compatible_files:
+            return "No compatible files were given"
+        
+        amount_of_files = len(compatible_files)
+        
+        current_index = 0
+        def update_sub_progressbar(sub_percentage):
+            if progress_callback:
+                total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
+                progress_callback.emit(total_percentage)
 
-        if progress_callback: progress_callback.emit(60)
+        for i, file in enumerate(compatible_files):
+            current_index = i 
 
-        ImageExportHandler().conversion(c_file, convert_ops)
+            c_file = FileHandler().conversion([file], progress_callback=update_sub_progressbar)
+            if c_file is None:
+                continue
 
-        if progress_callback: progress_callback.emit(90)
+            ImageExportHandler().conversion(c_file, convert_ops, current_index)
+            
+            c_file = None 
+
+        if progress_callback: 
+            progress_callback.emit(90)
+
+        Exporter().execute_package_export(convert_ops['save_location'], convert_ops['archive_name'], PackageSettings.manage_package(convert_ops['export_type']))
 
         FileOsHandler().remove_dir(target_path)
 
-        if progress_callback: progress_callback.emit(100)
+        if progress_callback: 
+            progress_callback.emit(100)
         
-        return checked
+        return "managed to successfully convert."
+
 
     def convert_output(self, data):
         self.label.setText(f"Selected:")
         self.convert_button.setEnabled(False)
+        ErrorHub.error_msg(data, "information")
 
     def file_name_list(self, file_list):
         list = []

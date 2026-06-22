@@ -68,9 +68,8 @@ class Exporter():
         :type origin_file_s: list
         :param origin_file_s: list with the original file paths that were used for extraction.
         """
-        wb = Workbook()
-        sheet1 = wb.active
-        sheet1.title = "Tesseract"
+        wb = Workbook(write_only=True)
+        sheet1 = wb.create_sheet("Tesseract")
         sheet2 = wb.create_sheet("Raw data")
         sheet3 = wb.create_sheet("Interpreted")
         sheet4 = wb.create_sheet("Metadata")
@@ -82,28 +81,27 @@ class Exporter():
                 interpreted = data['interpreted']
 
                 for i, file_name in enumerate(origin_file_s):
+                    safe_file_name = f"{self.__save_val(file_name)}"
 
                     sheet1.append(["Type", "Text", "Left", "Top", "Width", "Height", "Bestand naam"])
                     for entry in tesseract[i]:
-                        dt = entry.area_domain()
-                        row = [dt['type'], self.__save_val(dt['text']), dt['left'], dt['top'], dt['width'], dt['height'], f"{self.__save_val(file_name)}"]
+                        row = [entry.type, self.__save_val(entry.text), entry.x, entry.y, entry.w, entry.h, safe_file_name]
                         sheet1.append(row)
 
                     sheet2.append(["Position", "Text", "Confidence", "Symbol id", "Text offset Left", "Text offset Top", "Text offset Width", "Text offset Height",
                                         "Symbol offset Left", "Symbol offset Top", "Symbol offset Width", "Symbol offset Height", "Bestand naam"])
                     for entry in raw_data[i]:
-                        dt = entry.area_domain()
-                        x, y, w, h = cv.boundingRect(dt['offset'])
-                        x2, y2, w2, h2 = dt['symbol_offset']
-                        row = [self.__save_val(dt['grid_position']), self.__save_val(dt['text']), dt['conf'], self.__save_val(dt['symbol']),
-                               x, y, w, h, x2, y2, w2, h2, f"{self.__save_val(file_name)}"]
+                        x, y, w, h = cv.boundingRect(entry.offset)
+                        x2, y2, w2, h2 = entry.symbol_offset
+                        row = [self.__save_val(entry.grid_position), self.__save_val(entry.text), entry.conf, self.__save_val(entry.symbol_id),
+                            x, y, w, h, x2, y2, w2, h2, safe_file_name]
                         sheet2.append(row)
+
 
                     sheet3.append(["Symbol id", "Letter code", "Tag number", "Left", "Top", "Width", "Height", "Bestand naam"])
                     for entry in interpreted[i]:
-                        dt = entry.area_domain()
-                        row = [self.__save_val(dt['symbol']), self.__save_val(dt['text']), self.__save_val(dt['tagnumber']),
-                               dt['left'], dt['top'], dt['width'], dt['height'], f"{self.__save_val(file_name)}"]
+                        row = [self.__save_val(entry.symbol_id), self.__save_val(entry.text), self.__save_val(entry.tagnumber),
+                            entry.x, entry.y, entry.w, entry.h, safe_file_name]
                         sheet3.append(row)
             
             self.__insert_metadata(origin_file_s, sheet4)
@@ -112,6 +110,7 @@ class Exporter():
             ErrorHub.error_msg(f"Something went wrong while trying to export to excel. '{tp}'", "warning")
         else:
             wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
+            data_to_enter.clear()
 
     def export_to_json(self, data_to_enter: list, origin_file_s: list) -> None:
         """This function exports the tesseract data, raw data, interpreted data and metadata into a json file.
@@ -132,29 +131,40 @@ class Exporter():
                 tess_boundary = []
                 raw_boundary = []
                 inter_boundary = []
-                meta_boundary = []
 
                 for entry in tesseract[i]:
-                    dt = entry.area_domain()
-                    tess_boundary.append({"type": dt['type'], "text": dt['text'], "left": dt['left'], "top": dt['top'], "width": dt['width'], "height": dt['height']})
+                    tess_boundary.append({
+                        "type": entry.type, 
+                        "text": entry.text, 
+                        "left": entry.x, 
+                        "top": entry.y, 
+                        "width": entry.w, 
+                        "height": entry.h
+                    })
 
                 for entry in raw_data[i]:
-                    dt = entry.area_domain()
-                    x, y, w, h = cv.boundingRect(dt['offset'])
-                    x2, y2, w2, h2 = dt['symbol_offset']
-                    raw_boundary.append({"position": dt['grid_position'], "text": dt['text'], "confidence": dt['conf'], "symbol_id": dt['symbol'], 
-                                         "text_offset_left": x, "text_offset_top": y, "text_offset_width": w, "text_offset_height": h, 
-                                         "symbol_offset_left": x2, "symbol_offset_top": y2, "symbol_offset_width": w2, "symbol_offset_height": h2})
+                    x, y, w, h = cv.boundingRect(entry.offset)
+                    x2, y2, w2, h2 = entry.symbol_offset
+                    raw_boundary.append({
+                        "position": entry.grid_position, 
+                        "text": entry.text, 
+                        "confidence": entry.conf, 
+                        "symbol_id": entry.symbol_id, 
+                        "text_offset_left": x, "text_offset_top": y, "text_offset_width": w, "text_offset_height": h, 
+                        "symbol_offset_left": x2, "symbol_offset_top": y2, "symbol_offset_width": w2, "symbol_offset_height": h2
+                    })
                     
                 for entry in interpreted[i]:
-                    dt = entry.area_domain()
-                    inter_boundary.append({"symbol_id": dt['symbol'], "lettercode": dt['text'], "tag_number": dt['tagnumber'],
-                                            "left": dt['left'], "top": dt['top'], "width": dt['width'], "height": dt['height']})
+                    inter_boundary.append({
+                        "symbol_id": entry.symbol_id, 
+                        "lettercode": entry.text, 
+                        "tag_number": entry.tagnumber,
+                        "left": entry.x, "top": entry.y, "width": entry.w, "height": entry.h
+                    })
                     
                 bundle = MetaDataCreator(file_name).get()._get() 
-                meta_boundary.append(bundle)
 
-                grouped_collection[file_name].append({"tesseract": tess_boundary, "raw": raw_boundary, "interpreted": inter_boundary, "metadata": meta_boundary})
+                grouped_collection[file_name].append({"tesseract": tess_boundary, "raw": raw_boundary, "interpreted": inter_boundary, "metadata": [bundle]})
 
         _json = {"export": [{
             "collection": grouped_collection
@@ -175,71 +185,72 @@ class Exporter():
             except json.JSONDecodeError as ex:
                 print(ex)
                 ErrorHub.error_msg(f"Something went wrong while trying to create a json file after the first attempt. '{ex}'", "critical")
+        data_to_enter.clear()
 
     def export_to_csv(self, data_to_enter: list, origin_file_s: list) -> None:
-        """This function exports the tesseract data, raw data, interpreted data and metadata into a csv file.
+        """This function exports the tesseract data, raw data, interpreted data and metadata into a csv file."""
+        file_path = f"{self.dir_path}/{self.dir_name}/output.csv"
         
-        :type data_to_enter: list
-        :param data_to_enter: the data to enter into the csv file(s) (amount depends on how many files are extracted).
-        :type origin_file_s: list
-        :param origin_file_s: list with the original file paths that were used for extraction.
-        """
-        try:
-            with open(f"{self.dir_path}/{self.dir_name}/output.csv", "w", newline='') as file:
+        filefieldname = ['file']
+        fieldnames = ['type', 'text', 'left', 'top', 'width', 'height']
+        fieldnames_raw = ['position', 'text', 'confidence', 'symbol_id', 'text_offset_left', 'text_offset_top', 'text_offset_width', 'text_offset_height',
+                        'symbol_offset_left', 'symbol_offset_top', 'symbol_offset_width', 'symbol_offset_height']
+        fieldnames_interpreted = ['symbol_id', 'lettercode', 'tag_number', 'left', 'top', 'width', 'height']
+        fieldnames_metadata = ["title", "creator", "creationDate", "modDate", "ISO216_A", "pdfWidth", "pdfHeight", "pdfWidth_mm", "pdfHeight_mm",
+                            "pdfWidth_px", "pdfHeight_px", "scaled_height", "scaled_width"]
+
+        def write_csv_data():
+            with open(file_path, "w", newline='', encoding='utf-8') as file:
+                
+                writer_file = csv.DictWriter(file, fieldnames=filefieldname)
+                writer_tess = csv.DictWriter(file, fieldnames=fieldnames)
+                writer_raw = csv.DictWriter(file, fieldnames=fieldnames_raw)
+                writer_inter = csv.DictWriter(file, fieldnames=fieldnames_interpreted)
+                writer_meta = csv.DictWriter(file, fieldnames=fieldnames_metadata)
+
                 for data in data_to_enter:
                     tesseract = data['tesseract']
                     raw_data = data['raw_data']
                     interpreted = data['interpreted']
-                    filefieldname = ['file']
-                    fieldnames = ['type', 'text', 'left', 'top', 'width', 'height']
-                    fieldnames_raw = ['position', 'text', 'confidence', 'symbol_id', 'text_offset_left', 'text_offset_top', 'text_offset_width', 'text_offset_height',
-                                      'symbol_offset_left', 'symbol_offset_top', 'symbol_offset_width', 'symbol_offset_height']
-                    fieldnames_interpreted = ['symbol_id', 'lettercode', 'tag_number', 'left', 'top', 'width', 'height']
-                    fieldnames_metadata = ["title", "creator", "creationDate", "modDate", "ISO216_A", "pdfWidth", "pdfHeight", "pdfWidth_mm", "pdfHeight_mm",
-                                           "pdfWidth_px", "pdfHeight_px", "scaled_height", "scaled_width"]
 
                     for i, file_name in enumerate(origin_file_s):
-
-                        writer = csv.DictWriter(file, fieldnames=filefieldname)
-                        writer.writerows([{"file": file_name}])
-
-                        tess_boundary = []
-                        raw_boundary = []
-                        inter_boundary = []
-                        metadata_boundary = []
+                        writer_file.writerow({"file": file_name})
 
                         for entry in tesseract[i]:
-                            dt = entry.area_domain()
-                            tess_boundary.append({"type": dt['type'], "text": dt['text'], "left": dt['left'], "top": dt['top'], "width": dt['width'], "height": dt['height']})
-                        writer = csv.DictWriter(file, fieldnames=fieldnames)
-                        writer.writerows(tess_boundary)
+                            writer_tess.writerow({
+                                "type": entry.type, "text": entry.text, "left": entry.x, 
+                                "top": entry.y, "width": entry.w, "height": entry.h
+                            })
 
                         for entry in raw_data[i]:
-                            dt = entry.area_domain()
-                            x, y, w, h = cv.boundingRect(dt['offset'])
-                            x2, y2, w2, h2 = dt['symbol_offset']
-                            raw_boundary.append({"position": dt['grid_position'], "text": dt['text'], "confidence": dt['conf'], "symbol_id": dt['symbol'], 
-                                                "text_offset_left": x, "text_offset_top": y, "text_offset_width": w, "text_offset_height": h, 
-                                                "symbol_offset_left": x2, "symbol_offset_top": y2, "symbol_offset_width": w2, "symbol_offset_height": h2})
-                        writer = csv.DictWriter(file, fieldnames=fieldnames_raw)
-                        writer.writerows(raw_boundary)    
+                            x, y, w, h = cv.boundingRect(entry.offset)
+                            x2, y2, w2, h2 = entry.symbol_offset
+                            writer_raw.writerow({
+                                "position": entry.grid_position, "text": entry.text, "confidence": entry.conf, "symbol_id": entry.symbol_id, 
+                                "text_offset_left": x, "text_offset_top": y, "text_offset_width": w, "text_offset_height": h, 
+                                "symbol_offset_left": x2, "symbol_offset_top": y2, "symbol_offset_width": w2, "symbol_offset_height": h2
+                            })
                             
                         for entry in interpreted[i]:
-                            dt = entry.area_domain()
-                            inter_boundary.append({"symbol_id": dt['symbol'], "lettercode": dt['text'], "tag_number": dt['tagnumber'],
-                                                    "left": dt['left'], "top": dt['top'], "width": dt['width'], "height": dt['height']})
-                        writer = csv.DictWriter(file, fieldnames=fieldnames_interpreted)
-                        writer.writerows(inter_boundary)
+                            writer_inter.writerow({
+                                "symbol_id": entry.symbol_id, "lettercode": entry.text, "tag_number": entry.tagnumber,
+                                "left": entry.x, "top": entry.y, "width": entry.w, "height": entry.h
+                            })
 
                         bundle = MetaDataCreator(file_name).get()._get()
-                        metadata_boundary.append(bundle)
-                        writer = csv.DictWriter(file, fieldnames=fieldnames_metadata)
-                        writer.writerows(metadata_boundary)
-                            
+                        writer_meta.writerow(bundle)
+
+        try:
+            write_csv_data()
         except FileNotFoundError:
-            print("The directory to export too, does not exist. reverting to default, attempting once more.")
-            ErrorHub.error_msg("The directory to export too, does not exist. Reverting to default, try again.", "information")
+            print("The directory to export to does not exist. Reverting to default, attempting once more.")
+            ErrorHub.error_msg("The directory to export to does not exist. Reverting to default, try again.", "information")
             FileOsHandler().create_dir(dir_path=self.dir_path, dir_name=self.dir_name)
+            try:
+                write_csv_data()
+            except Exception as ex:
+                print(f"Second attempt failed: {ex}")
+        data_to_enter.clear()
     
     def execute_export(self, data_to_enter: list, origin_file_s: list, package_type: PackageType = PackageType.DEFAULT) -> None:
         """This function is like a main hub for the export options (referring to csv, json and excel).

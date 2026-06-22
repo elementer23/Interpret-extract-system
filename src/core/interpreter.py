@@ -41,42 +41,27 @@ class Interpreter():
         """
         if not self.raw_collection:
             return False
-        for i in range(len(self.raw_collection)):
-            grouped_collection = defaultdict(list)
+        for raw_page in self.raw_collection:
             symbol_list, ocr_texts = [], []
-            for data in self.raw_collection[i]:
-                raw_data = data.area_domain()
-                symbol = raw_data['symbol']
-                x2, y2, w2, h2 = raw_data['symbol_offset']
-                symbol_list.append({"symbol_id": symbol, "left": x2, "top": y2, "width": w2, "height": h2})
-                x, y, w, h = cv.boundingRect(raw_data['offset'])
-                ocr_texts.append({"text": raw_data['text'], "left": x, "top": y, "width": w, "height": h})
-                grouped_collection[symbol].append({
-                    "symbol_id": symbol,
-                    "text": raw_data['text'],
-                    "confidence": raw_data['conf'],
-                    "left": x,
-                    "top": y,
-                    "width": w,
-                    "height": h,
-                    "symbol_left": x2,
-                    "symbol_top": y2,
-                    "symbol_width": w2,
-                    "symbol_height": h2
-                })
+            for data in raw_page:
+                # raw_data = data.area_domain()
+                # symbol = data.symbol_id
+                # x2, y2, w2, h2 = data.symbol_offset
+                symbol_list.append((data.symbol_id, data.symbol_offset))
+                x, y, w, h = cv.boundingRect(data.offset)
+                ocr_texts.append((data.text, x, y, w, h))
             result = self.__build(symbol_list, ocr_texts)
             self.collection.append(result)
 
-    def __center(self, bbox):
+    def __center(self, x, y, w, h):
         """
         This function calculates the center of a bounding box
         """
-        x, y, w, h = bbox
         return (x + w / 2, y + h / 2)
     
     def __dst(self, p1, p2):
         """
-        Ths function calculates the distance between two points
+        This function calculates the distance between two points
         """
         return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     
@@ -106,33 +91,25 @@ class Interpreter():
         :return list: a list of interpreted annotations
         """
         all_possible_matches = []
-        for s_idx, symbol in enumerate(symbol_list):
-            symbol_bbox = (symbol['left'], symbol['top'], symbol['width'], symbol['height'])
+        for s_idx, (symbol_id, symbol_bbox) in enumerate(symbol_list):
             # center the coordinates of the symbols
-            symbol_center = self.__center(symbol_bbox)
+            symbol_center = self.__center(*symbol_bbox)
 
-            for t_idx, text_item in enumerate(text_list):
-                text_bbox = (text_item['left'], text_item['top'], text_item['width'], text_item['height'])
+            for t_idx, (text, tx, ty, tw, th) in enumerate(text_list):
                 # center all the coordinates of the text boxes
-                text_center = self.__center(text_bbox)
+                text_center = self.__center(tx, ty, tw, th)
 
                 # calculate the distance between the two coordinates and save all the possible matches
                 distance = self.__dst(symbol_center, text_center)
                 if distance <= max_dst:
-                    all_possible_matches.append({
-                        'distance': distance,
-                        'symbol_idx': s_idx,
-                        'text_idx': t_idx
-                    })
+                    all_possible_matches.append((distance, s_idx, t_idx))
 
         # sort all the possible matches based on the distance
-        all_possible_matches.sort(key=lambda x: x['distance'])
+        all_possible_matches.sort()
         symbol_assigned_texts = defaultdict(list)
         used_text_indices = set()
 
-        for match in all_possible_matches:
-            s_idx = match['symbol_idx']
-            t_idx = match['text_idx']
+        for distance, s_idx, t_idx in all_possible_matches:
             #skip all the unnecessary copies
             if t_idx in used_text_indices:
                 continue
@@ -145,37 +122,28 @@ class Interpreter():
             used_text_indices.add(t_idx)
 
         results = []
-        for s_idx, symbol in enumerate(symbol_list):
-            symbol_id = symbol['symbol_id']
-            symbol_bbox = (symbol['left'], symbol['top'], symbol['width'], symbol['height'])
-            
+        for s_idx, (symbol_id, symbol_bbox) in enumerate(symbol_list):
             matched_items = symbol_assigned_texts[s_idx]
-            matched_items.sort(key=lambda item: item['top'])
+            matched_items.sort(key=lambda item: item[2])
 
             if len(matched_items) == 2:
-                letter_code = matched_items[0]['text']
-                tag_number = matched_items[1]['text']
+                letter_code = matched_items[0][0]
+                tag_number = matched_items[1][0]
             elif len(matched_items) == 1:
-                letter_code = matched_items[0]['text']
+                letter_code = matched_items[0][0]
                 tag_number = None
             else:
-                letter_code = None
-                tag_number = None
-
-            if letter_code is None and tag_number is None:
                 continue
 
-            if letter_code.isdigit() or letter_code is None and isinstance(tag_number, str) and not tag_number.isdigit():
-                temp = letter_code
-                letter_code = tag_number
-                tag_number = temp
+            if (letter_code and letter_code.isdigit()) or (letter_code is None and isinstance(tag_number, str) and not tag_number.isdigit()):
+                letter_code, tag_number = tag_number, letter_code
 
             print(f"symbol: {symbol_id} | letter_code: {letter_code}, tagnumber: {tag_number} | x: {symbol_bbox[0]}, y: {symbol_bbox[1]}, w: {symbol_bbox[2]}, h: {symbol_bbox[3]}")
 
             results.append(InterpretedDetection(
                 symbol_id=symbol_id,
-                text=letter_code,
-                tagnumber=tag_number,
+                text=letter_code if letter_code else "",
+                tagnumber=tag_number if tag_number else "",
                 x=symbol_bbox[0],
                 y=symbol_bbox[1],
                 w=symbol_bbox[2],

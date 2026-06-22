@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout
 )
 from gui.events.thread_handler import ThreadHandler
+import gc
 
 class GenerateExtractedDataPDF(QWidget):
     def __init__(self):
@@ -104,6 +105,8 @@ class GenerateExtractedDataPDF(QWidget):
 
         if context is not None:
             FileHandler().draw_contextdata_on_pdf(context, self.file_path[0], self.name_file_to.text())
+            context = None
+            gc.collect()
 
 
     def convert_output(self, data):

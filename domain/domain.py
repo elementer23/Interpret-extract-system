@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 class Domain(ABC):
+    __slots__ = ()
     @abstractmethod
     def area_domain(self) -> dict:
         pass
@@ -32,7 +33,7 @@ class SymbolDetectionBox(Domain):
        
 
 class RawData(Domain):
-    __slots__=('conf', 'offset', 'symbol_offset', 'grid_position')
+    __slots__ = ('text', 'conf', 'symbol_id', 'offset', 'symbol_offset', 'grid_position')
 
     def __init__(self, text, conf, symbol_id, offset, symbol_offset, grid_position):
         self.text = text
@@ -46,7 +47,7 @@ class RawData(Domain):
         return {"text": self.text, "conf": self.conf, "symbol": self.symbol_id, "offset": self.offset, "symbol_offset": self.symbol_offset, "grid_position": self.grid_position}        
 
 class InterpretedDetection(Domain):
-    __slots__=('tagnumber')
+    __slots__ = ('symbol_id', 'text', 'tagnumber', 'x', 'y', 'w', 'h')
 
     def __init__(self, symbol_id: str | int, text: str, tagnumber: str, x: int, y: int, w: int, h: int):
         self.symbol_id = symbol_id

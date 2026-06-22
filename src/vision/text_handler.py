@@ -20,6 +20,7 @@ class TextHandler():
         super().__init__()
         use_gpu_boolean = (DEVICE.type == "cuda")
         self.reader = easyocr.Reader(['en'], gpu=use_gpu_boolean)
+        self.clean_regex = re.compile(r"[\s:\\|.+\_<>\^*{}()\[\]—=\-~;\"]+")
 
     def process(self, context):
         """The process function. This is the process function of the TextHandler, usually one of the last handlers in the build.
@@ -41,14 +42,11 @@ class TextHandler():
         for i, yolo_box in enumerate(context.yolo_data):
             data = []
 
-            count = 0
-            batch = []
             current_image = context.image_s[i]
             grayed_image = cv.cvtColor(current_image, cv.COLOR_BGR2GRAY) if len(current_image.shape) > 2 else current_image
 
             for box in yolo_box:
-                bbxad = box.area_domain()
-                pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
+                pts = box.offset_box[0].reshape((-1, 1, 2)).astype(np.int32)
                 x, y, w, h = cv.boundingRect(pts)
                 raw_crop = grayed_image[y:y+h, x:x+w]
                 
@@ -63,17 +61,13 @@ class TextHandler():
                             global_pts = local_pts + offset
                             text_pts_global = global_pts.reshape((-1, 1, 2))
 
-                            grid_pos = self.__get_grid_position(text_pts_global, current_image.shape[0], current_image.shape[1])
-                            for pos in grid_pos:
-                                batch.append(pos)
+                            grid_pos = next(self.__get_grid_position(text_pts_global, current_image.shape[0], current_image.shape[1]))
+                            safe_global_pts = text_pts_global.copy()
                             
                             text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
                             # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
-                            # print(f"Gevonden tekst: {text} (score: {prob:.2f}) -> Symbool ID: {bbxad['symbol_id']}")
-                            data.append(RawData(text, prob, bbxad['symbol_id'], text_pts_global, (x, y, w, h), batch[count]))
-                            count += 1
+                            data.append(RawData(text, prob, box.symbol_id, safe_global_pts, (x, y, w, h), grid_pos))
                             
-            batch.clear()
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
@@ -133,20 +127,32 @@ class TextHandler():
             lis = []
 
             # Each text the OCR could find, will be looped over.
-            for j in range(len(data['text'])):
+            # for j in range(len(data['text'])):
+            for text, conf, left, top, width, height in zip(
+                data['text'], data['conf'], data['left'], data['top'], data['width'], data['height']
+            ):
                 # Everything unnecessary or invalid, will be filtered out.
-                reg_text = self.method_regex(data['text'][j])
-                if not len(reg_text) == 0:
+                if text is None or not text.strip():
+                    continue
                     # The x, y, width and height positions of each item is assigned
-                    x, y, w, h = data['left'][j], data['top'][j], data['width'][j], data['height'][j]
-                    # The text will be normalized
-                    normalized_text = self.normalize_text(data['text'][j])
-                    text = data['text'][j]
-                    # The confidence score of each item will be checked and has to be over 20
-                    if int(float(data['conf'][j])) > 20:
+                try:
+                    conf_score = int(float(conf))
+                except (ValueError, TypeError):
+                    continue
+                
+                # The confidence score of each item will be checked and has to be over 20
+                if conf_score > 20:
+                    reg_text = self.method_regex(text)
+                    if len(reg_text) > 0:
+                        # The text will be normalized
+                        normalized_text = self.normalize_text(text)
+                        
                         # The category of the item, the item itself and the coordinates are added to a class object and added to a list.
-                        lis.append(TextDetectionBox(BasicUtils.categorize(text), normalized_text, x, y, w, h))
-                        print(f"Text: {text} -> {normalized_text} -> conf score: {int(float(data['conf'][j]))}")
+                        lis.append(TextDetectionBox(
+                            type=BasicUtils.categorize(text), 
+                            text=normalized_text, 
+                            x=left, y=top, w=width, h=height
+                        ))
 
             if context.progress_callback:
                 current_file = i + 1
@@ -165,7 +171,7 @@ class TextHandler():
 
         :return string: will return the filtered value.
         """
-        return re.sub(r"\s+|:+|\\+|\|+|\.+|\++|_+|<+|>+|\*+|\^+|\{+|\}+|\(+|\)+|\[+|\]+|—+|=+|-+|~+|;+|\"+", "", val)
+        return self.clean_regex.sub("", val)
     
     def normalize_text(self, val: str):
         """This function somewhat normalizes the given value. 
@@ -177,9 +183,6 @@ class TextHandler():
 
         :return string: return the value that is normalized.
         """
-        text = val.strip()
-        text = text.upper()
-
-        return text
+        return val.strip().upper()
 
 

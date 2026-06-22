@@ -98,9 +98,10 @@ class DetectionHandler():
             context.progress_callback(0)
 
         amount_of_files = len(context.image_s)
+        actual_file_number  = getattr(context, "current_file_index", 1)
 
         for count, detection_file in enumerate(context.image_s, start=1):
-            print(f"Working on file number: {count}")
+            print(f"Working on file number: {actual_file_number }")
 
             file_to_predict = detection_file
 
@@ -152,7 +153,7 @@ class DetectionHandler():
 
                 for symbol_count, final_poly in enumerate(merged_polygons, start=1):
                     coords = np.array(final_poly.exterior.coords).astype(np.int32)
-                    merged_results.append(SymbolDetectionBox((coords, 0.80), f"{count}-{symbol_count}"))
+                    merged_results.append(SymbolDetectionBox((coords, 0.80), f"{actual_file_number }-{symbol_count}"))
 
                 print(f"Symbols detected: {len(merged_results)}")
 

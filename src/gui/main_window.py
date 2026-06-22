@@ -27,6 +27,7 @@ from gui.widgets.window_showplotwidget import PlotWindow
 from gui.events.thread_handler import ThreadHandler
 from core.interpreter import Interpreter
 from error.error_hub import ErrorHub
+import gc
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -154,6 +155,8 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "warning", message)
             case "information":
                 QMessageBox.information(self, "information", message)
+            case _:
+                QMessageBox.information(self, "error", message)
             
 
     def open_file_dialog(self):
@@ -176,14 +179,18 @@ class MainWindow(QMainWindow):
             if progress_callback:
                 progress_callback.emit(percentage)
 
-        Decompress(directory=target_path, file_s=self.file_path[:], progress_callback=update_progressbar)
+        cls = Decompress(directory=target_path, file_s=self.file_path, progress_callback=update_progressbar)
 
-        return checked
+        if cls is None:
+            return "failed to add items to the system. Try again."
+
+        return "successfully added items to system, list updated!"
 
     def decomp_output(self, data):
         self.dir_content()
         self.decomp_button.setHidden(True)
         self.label.setText("Select...")
+        ErrorHub.error_msg(data, "information")
 
     def dir_content(self):
         """Loads a content of files inside the window, from the directory applied in the settings."""
@@ -242,17 +249,20 @@ class MainWindow(QMainWindow):
     def show_plot_window(self, data):
         try:
             if data:
-                plot_window = ""
-                for f in data[:]:
+                for f in data:
                     plot_window = PlotWindow(f)
                     self.windows.append(plot_window)
-                    plot_window.show()
+                    plot_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
-                plot_window.destroyed.connect(lambda: self.windows.remove(plot_window))
-        except ValueError: pass
+                    plot_window.destroyed.connect(self.__make_cleanup_handler(plot_window))
+                    plot_window.show()
+        except ValueError:
+            pass
+
+    def __make_cleanup_handler(self, window):
+        return lambda: self.windows.remove(window) if window in self.windows else None
 
     def open_selected_files(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
-        """Same functionality as open_file, but with multiple files at the same time."""
         dir_list = []
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
  
@@ -261,18 +271,28 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
-        def update_progressbar(percentage):
-            if progress_callback:
-                progress_callback.emit(percentage)
 
+        amount_of_files = len(dir_list)
         try:
             builder = Handler.pipeline_builder(self, True, None, FileHandler(), ImageHandler())
-            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
-            TextHandler().read_tesseract(context=context)
-
             plot_data = []
-            if context is not None:
-                plot_data = ImageHandler().draw_bounding_box(pipeline_context=context)
+
+            current_index = 1
+            def update_progressbar(sub_percentage):
+                    if progress_callback:
+                        total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
+                        progress_callback.emit(total_percentage)
+
+            for i, directory in enumerate(dir_list):
+                current_index = i
+                context = builder.run(builder.handler, [directory], progress_callback=update_progressbar, file_index=current_index)
+            
+                if context is not None:
+                    TextHandler().read_tesseract(context=context)
+                    plot_data.extend(ImageHandler().draw_bounding_box(pipeline_context=context))
+                    
+                    context = None
+                    gc.collect()
 
             return plot_data
 
@@ -292,19 +312,47 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
-        def update_progressbar(percentage):
-            if progress_callback:
-                progress_callback.emit(percentage)
+        amount_of_files = len(dir_list)
+        all_tesseract = []
+        all_raw_data = []
+        all_interpreted = []
 
         try:
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
-            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
-            if context is not None:
-                interpreter = Interpreter(context.combo_data[:]).fetch()
-                TextHandler().read_tesseract(context=context)
-                assign_data = []
-                assign_data.append({"tesseract": context.text_boxes, "raw_data": context.combo_data, "interpreted": interpreter})
-                Exporter().execute_export(assign_data, dir_list[:], PackageSettings.manage_package())
+
+            current_index = 1
+            def update_progressbar(sub_percentage):
+                    if progress_callback:
+                        total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
+                        progress_callback.emit(total_percentage)
+            
+            for i, directory in enumerate(dir_list):
+                current_index = i
+                context = builder.run(builder.handler, [directory], progress_callback=update_progressbar, file_index=current_index)
+
+                if context is not None:
+
+                    all_raw_data.append(context.combo_data[0])
+
+                    interpreter = Interpreter(context.combo_data).fetch()
+                    TextHandler().read_tesseract(context=context)
+                    all_tesseract.append(context.text_boxes[0])
+                    all_interpreted.append(interpreter[0] if interpreter else [])
+
+                    interpreter = None
+                    context = None
+                    gc.collect()
+            
+            assign_data=[{"tesseract": all_tesseract, "raw_data": all_raw_data, "interpreted": all_interpreted}]
+
+            Exporter().execute_export(assign_data, dir_list[:], PackageSettings.manage_package())
+            
+            dir_list.clear()
+            assign_data.clear()
+            all_tesseract.clear()
+            all_raw_data.clear()
+            all_interpreted.clear()
+            gc.collect()
 
             return f"{file_list} has or have been successfully exported."
 
@@ -324,16 +372,27 @@ class MainWindow(QMainWindow):
             with QMutexLocker(self.lock):
                 self.active_files.add(n["dir"])
 
-        def update_progressbar(percentage):
-            if progress_callback:
-                progress_callback.emit(percentage)
+        amount_of_files = len(dir_list)
 
         try:
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
-            context = builder.run(builder.handler, dir_list[:], progress_callback=update_progressbar)
             plot_data = []
-            if context is not None:
-                plot_data = ImageHandler().draw_detection_box(pipeline_context=context)
+
+            current_index = 1
+            def update_progressbar(sub_percentage):
+                    if progress_callback:
+                        total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
+                        progress_callback.emit(total_percentage)
+
+            for i, directory in enumerate(dir_list):
+                current_index = i
+                context = builder.run(builder.handler, [directory], progress_callback=update_progressbar, file_index=current_index)
+
+                if context is not None:
+                    plot_data.extend(ImageHandler().draw_detection_box(pipeline_context=context))
+
+                    context = None
+                    gc.collect()
 
             return plot_data
         

@@ -5,9 +5,10 @@ import json
 from sahi.slicing import slice_coco
 import cv2 as cv
 from handler.file_handler import FileOsHandler
+import pathlib
 
-label_folder = r'C:/Users/697/projecten/labeling/Big-bulk-dataset/data/labels'
-image_folder = r'C:/Users/697/projecten/labeling/Big-bulk-dataset/data/images'
+local_appdata = os.environ.get('LOCALAPPDATA')
+app_folder = pathlib.Path(f"{local_appdata}/interpret_extract_system")
 
 class IO():
     """
@@ -22,8 +23,8 @@ class IO():
     This then creates a new dataset, which still has to be manually transferred over to a yolov8 dataset folder structure.
     Or can be used as is, depending on how you created your map structure. 
     """
-    def __init__(self):
-        pass
+    def __init__(self, progress_callback=None):
+        self.progress_callback = progress_callback
 
     def slice_sahi(self, json_to_change: str, cleaned_json_output: str, dir_images_to_slice: str, output_archive_name_of_sliced_images: str, width_in_pix: int = False,
                    slicing_width: int = False, slicing_height: int = False):
@@ -32,10 +33,16 @@ class IO():
         This function hasn't been fully realized yet.
         """
 
+        if self.progress_callback:
+            self.progress_callback(0)
+
+        FileOsHandler().create_dir(app_folder, 'dataset')
+        dataset_folder = app_folder / 'dataset'
+
         input_json = json_to_change
-        cleaned_json = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/data/{cleaned_json_output}.json'
+        cleaned_json = dataset_folder / f'{cleaned_json_output}.json'
         image_dir = dir_images_to_slice
-        output_dir = f"C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{output_archive_name_of_sliced_images}/"
+        output_dir = dataset_folder / "images/"
         width = 1500 if not width_in_pix else width_in_pix
         slice_w = 640 if not slicing_width else slicing_width
         slice_h = 640 if not slicing_height else slicing_height
@@ -47,14 +54,16 @@ class IO():
             print(f"The given path: {input_json} : is invalid.")
             return
         
-        if not FileOsHandler().create_dir("C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt", output_archive_name_of_sliced_images):
+        if not FileOsHandler().create_dir(dataset_folder, "images"):
             print("This archiving name already exists, choose another name.")
             return
 
         new_images = []
         valid_image_ids = set()
 
-        for img in data['images']:
+        image_amount = len(data['images'])
+
+        for i, img in enumerate(data['images']):
             # 1. Bestandsnaam opschonen
             raw_name = img['file_name'].split('%5C')[-1].split('/')[-1]
             if '__' in raw_name:
@@ -88,6 +97,10 @@ class IO():
                 new_images.append(img)
                 valid_image_ids.add(img['id'])
 
+            if self.progress_callback:
+                percentage = int((i / image_amount) * 100)
+                self.progress_callback(percentage)
+
         # Update de data
         data['images'] = new_images
         data['annotations'] = [a for a in data['annotations'] if a['image_id'] in valid_image_ids]
@@ -109,7 +122,7 @@ class IO():
             ignore_negative_samples=True,
         )
 
-        self.__coco_labeling(output_archive_name_of_sliced_images)
+        self.__coco_labeling("images")
 
     # slice_sahi()
 
@@ -117,8 +130,12 @@ class IO():
         """
         This function hasn't been fully realized yet.
         """
-        tiled_json = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/tiled_annotations.json_coco.json'
-        output_label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{json_coco}/labels/'
+        if self.progress_callback:
+            self.progress_callback(0)
+
+        dataset_folder = app_folder / 'dataset'
+        tiled_json = dataset_folder / f'{json_coco}/tiled_annotations.json_coco.json'
+        output_label_dir = dataset_folder / 'labels/'
 
         os.makedirs(output_label_dir, exist_ok=True)
 
@@ -128,7 +145,8 @@ class IO():
         # Maak een dictionary voor snelle lookup van afbeeldingen
         images = {img['id']: img for img in data['images']}
 
-        for ann in data['annotations']:
+        amount_of_annotations = len(data['annotations'])
+        for i, ann in enumerate(data['annotations']):
             img = images[ann['image_id']]
             file_name = os.path.splitext(img['file_name'])[0] + ".txt"
             
@@ -148,6 +166,10 @@ class IO():
             with open(os.path.join(output_label_dir, file_name), 'a') as f:
                 f.write(line)
 
+            if self.progress_callback:
+                percentage = int((i / amount_of_annotations) * 100)
+                self.progress_callback(percentage)
+
         print("Done! the labels should be in the 'labels' directory.")
 
         self.__coco_jpg_removal(json_coco)
@@ -156,11 +178,17 @@ class IO():
         """
         This function hasn't been fully realized yet.
         """
-        image_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/'
-        label_dir = f'C:/Users/697/projecten/labeling/Big-bulk-dataset/attempt/{dir_name}/labels/'
+
+        if self.progress_callback:
+            self.progress_callback(0)
+
+        dataset_folder = app_folder / 'dataset'
+        image_dir = dataset_folder / f'{dir_name}/'
+        label_dir = dataset_folder / 'labels/'
 
         valid_names = {os.path.splitext(f)[0] for f in os.listdir(label_dir) if f.endswith('.txt')}
 
+        amount_image = len(os.listdir(image_dir))
         count = 0
         for img_file in os.listdir(image_dir):
             if img_file.endswith(('.jpg', '.jpeg', '.png')):
@@ -168,5 +196,9 @@ class IO():
                 if name not in valid_names:
                     os.remove(os.path.join(image_dir, img_file))
                     count += 1
+            
+            if self.progress_callback:
+                percentage = int((count / amount_image) * 100)
+                self.progress_callback(percentage)
 
         print(f"Done! removed {count} empty images. Now you should have a clean dataset.")

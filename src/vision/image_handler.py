@@ -34,10 +34,13 @@ class ImageHandler():
         amount_of_files = len(context.image_s)
 
         for i in range(amount_of_files):
-            if context.image_s[i].shape[2] == 4:
-                context.image_s[i] = cv.cvtColor(context.image_s[i], cv.COLOR_RGBA2BGR)
-            else:
-                context.image_s[i] = cv.cvtColor(context.image_s[i], cv.COLOR_RGB2BGR)
+            img = context.image_s[i]
+            img_channels = img.shape[2] if len(img.shape) == 3 else 1
+
+            if img_channels == 4:
+                context.image_s[i] = cv.cvtColor(img, cv.COLOR_RGBA2BGR)
+            elif img_channels == 3:
+                context.image_s[i] = cv.cvtColor(img, cv.COLOR_RGB2BGR)
 
             if context.progress_callback:
                 current_file = i + 1
@@ -60,12 +63,12 @@ class ImageHandler():
 
         arr = []
 
-        for i in range(len(pc.text_boxes)):
-            for bbx in pc.text_boxes[i]:
-                bbxad = bbx.area_domain()
-                cv.rectangle(pc.image_s[i], (bbxad['left'], bbxad['top']), (bbxad['left'] + bbxad['width'], bbxad['top'] + bbxad['height']), (0, 0, 255), 2)
-
-            arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
+        for i, row in enumerate(pc.text_boxes):
+            image = pc.image_s[i].copy()
+            for box in row:
+                cv.rectangle(image, (box.x, box.y), (box.x + box.w, box.y + box.h), (0, 0, 255), 2)
+            
+            arr.append(image)
         return arr
     
 
@@ -75,15 +78,13 @@ class ImageHandler():
         before returning it in batches.
         """
         batch = []
-        
-        rows = len(data)
-        for i in range(rows):
+
+        for row in data:
             grouped_batch = defaultdict(list)
-            for box in data[i]:
-                bbxad = box.area_domain()
-                grouped_batch[bbxad['symbol']].append(bbxad["text"])
+            for box in row:
+                grouped_batch[box.symbol_id].append(box.text)
             batch.append(grouped_batch)
-        return batch    
+        return batch
     
     def __generate_flat_space(self, start_y, gap_y, cols, total_items, image):
          """
@@ -108,21 +109,18 @@ class ImageHandler():
         for it in batch:
             batch_per_file.append([(k, v) for k, v in it.items()])
 
-        # x2, y2, w2, h2 = cv.boundingRect(bbxad["offset"])
-        # pts = bbxad['offset'][0].reshape((-1, 1, 2)).astype(np.int32)
-        # cv.polylines(pc.image_s[i], [pts], isClosed=True, color=(0, 255, 0), thickness=3)
-
-        rows = len(pc.combo_data)
         cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 500, 40
+
+        for i, row in enumerate(pc.combo_data):
+            image = pc.image_s[i].copy()
   
-        for i in range(rows):
-            for box in pc.combo_data[i]:
-                bbxad = box.area_domain()
-                x, y, w, h = bbxad["symbol_offset"]
-                cv.rectangle(pc.image_s[i], (x, y), (x + w, y + h), (0, 255, 0), 3)
+            for box in row:
+                x, y, w, h = box.symbol_offset
+                cv.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
 
             total_items = len(batch_per_file[i])
-            self.__generate_flat_space(start_y, gap_y, cols, total_items, pc.image_s[i])
+            self.__generate_flat_space(start_y, gap_y, cols, total_items, image)
+
             for idx, item in enumerate(batch_per_file[i]):
                 symbol_id, text_list = item
                 filtered_text = f"{symbol_id}: {', '.join(text_list)}"
@@ -130,9 +128,10 @@ class ImageHandler():
                 grid_row = idx // cols
                 text_x = start_x + (grid_col * gap_x)
                 text_y = start_y + (grid_row * gap_y)
-                cv.putText(pc.image_s[i], filtered_text, (int(text_x), int(text_y)), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv.LINE_AA)
+                cv.putText(image, filtered_text, (int(text_x), int(text_y)), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv.LINE_AA)
 
-            arr.append(cv.cvtColor(pc.image_s[i], cv.COLOR_BGR2RGB))
+            arr.append(image)
+            
         return arr
         
     def pdf_to_image_PIL_show(self, file):
@@ -357,7 +356,7 @@ class ImageExportHandler():
                 return self.median_blur_effect(file, config)
 
 
-    def conversion(self, file: np.ndarray | str | list, config: dict) -> None:
+    def conversion(self, file: np.ndarray | str | list, config: dict, index=0) -> None:
         """This function is the main hub of conversion. Applying the colors and effects,
         before saving the image. Accepts a regular image, array of images or numpy array versions.
         Will export the folder afterwards, if that setting has been selected.
@@ -369,20 +368,17 @@ class ImageExportHandler():
         """
 
         if isinstance(file, np.ndarray):
-            image = self.apply_color_type(file[:], config)
-            image = self.apply_effect_type(image, config)
-            cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}{config['image_type']}", image)
+            image = self.apply_color_type(file, config)
+            image = self.apply_effect_type(image, config, index)
+            cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}-{index}{config['image_type']}", image)
 
         if isinstance(file, str):
-            image = self.apply_color_type(file[:], config)
-            image = self.apply_effect_type(image, config)
-            cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}{config['image_type']}", image)
+            image = self.apply_color_type(file, config)
+            image = self.apply_effect_type(image, config, index)
+            cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}-{index}{config['image_type']}", image)
 
         if isinstance(file, list):
             for i in range(len(file)):
                 image = self.apply_color_type(file[i], config)
                 image = self.apply_effect_type(image, config, i)
                 cv.imwrite(f"{config['save_location']}/{config['archive_name']}/{config['file_name']}-{i}{config['image_type']}", image)
-
-        
-        Exporter().execute_package_export(config['save_location'], config['archive_name'], PackageSettings.manage_package(config['export_type']))
