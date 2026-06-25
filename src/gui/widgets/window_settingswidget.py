@@ -16,6 +16,11 @@ from PyQt6.QtWidgets import (
 )
 
 class SettingsWindow(QWidget):
+    """
+    This is the window that regulates the basic settings for the user. 
+    Such as export and saving locations. Don't confuse this window with the 
+    config window.
+    """
     def __init__(self):
         super().__init__()
 

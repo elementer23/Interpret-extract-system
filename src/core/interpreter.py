@@ -1,4 +1,4 @@
-from domain.domain import TextDetectionBox, SymbolDetectionBox, InterpretedDetection
+from domain.domain import InterpretedDetection
 import cv2 as cv
 from collections import defaultdict
 import math

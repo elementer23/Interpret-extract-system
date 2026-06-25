@@ -10,6 +10,7 @@ import cv2 as cv
 from collections import defaultdict
 from core.build_metadata import MetaDataCreator
 from error.error_hub import ErrorHub
+import gc
 
 #Register the package to prevent register and threading problems for later on.
 try:
@@ -70,7 +71,7 @@ class Exporter():
         """
         wb = Workbook(write_only=True)
         sheet1 = wb.create_sheet("Tesseract")
-        sheet2 = wb.create_sheet("Raw data")
+        sheet2 = wb.create_sheet("Raw easyOCR data")
         sheet3 = wb.create_sheet("Interpreted")
         sheet4 = wb.create_sheet("Metadata")
         
@@ -105,12 +106,14 @@ class Exporter():
                         sheet3.append(row)
             
             self.__insert_metadata(origin_file_s, sheet4)
+            wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
         except TypeError as tp:
             print(tp)
             ErrorHub.error_msg(f"Something went wrong while trying to export to excel. '{tp}'", "warning")
-        else:
-            wb.save(f"{self.dir_path}/{self.dir_name}/output.xlsx")
+        finally:
             data_to_enter.clear()
+            wb.close()
+            gc.collect()
 
     def export_to_json(self, data_to_enter: list, origin_file_s: list) -> None:
         """This function exports the tesseract data, raw data, interpreted data and metadata into a json file.
@@ -164,7 +167,7 @@ class Exporter():
                     
                 bundle = MetaDataCreator(file_name).get()._get() 
 
-                grouped_collection[file_name].append({"tesseract": tess_boundary, "raw": raw_boundary, "interpreted": inter_boundary, "metadata": [bundle]})
+                grouped_collection[file_name].append({"tesseract": tess_boundary, "raw_easyocr_data": raw_boundary, "interpreted": inter_boundary, "metadata": [bundle]})
 
         _json = {"export": [{
             "collection": grouped_collection

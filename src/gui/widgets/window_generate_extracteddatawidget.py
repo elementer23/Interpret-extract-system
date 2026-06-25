@@ -10,11 +10,11 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QLineEdit,
     QGroupBox,
-    QFormLayout,
-    QProgressBar,
-    QHBoxLayout
+    QFormLayout
 )
 from gui.events.thread_handler import ThreadHandler
+from gui.widgets.window_progressoverview_widget import get_progress_overview
+from error.error_hub import ErrorHub
 import gc
 
 class GenerateExtractedDataPDF(QWidget):
@@ -26,10 +26,7 @@ class GenerateExtractedDataPDF(QWidget):
         self.setMaximumSize(QSize(500, 400))
 
         self.file_path = []
-        self.count_active_threads = 0
-
         main_layout = QVBoxLayout()
-        progress_layout = QHBoxLayout()
 
         group_box = QGroupBox("pdf to draw on")
         form_layout = QFormLayout()
@@ -46,42 +43,26 @@ class GenerateExtractedDataPDF(QWidget):
 
         self.convert_button = QPushButton("draw data")
         self.convert_button.setDisabled(True)
-        self.convert_button.clicked.connect(lambda checked: self.run_func(self.run_convert, self.convert_output, checked))
-
-        self.progressbar = QProgressBar()
-        self.progressbar.setVisible(False)
-        self.progressbar.setTextVisible(False)
+        self.convert_button.clicked.connect(lambda checked: self.run_func(self.run_convert, self.convert_output, "generate pdf", checked))
 
         form_layout.addRow(self.label, self.button)
         form_layout.addRow(QLabel("name file:"), self.name_file_to)
         form_layout.addRow(self.convert_button)
         group_box.setLayout(form_layout)
 
-        progress_layout.addWidget(self.progressbar)
         main_layout.addWidget(group_box)
-        main_layout.addLayout(progress_layout)
 
         self.setLayout(main_layout)
 
         self.threadhandler = ThreadHandler()
-        self.threadhandler.func_finished.connect(self.progressbar.setValue)
-        self.threadhandler.event_finished.connect(self.event_has_ended)
+        self.threadhandler.event_started.connect(get_progress_overview().add)
+        self.threadhandler.func_finished.connect(get_progress_overview().update_progress)
+        self.threadhandler.event_finished.connect(get_progress_overview().remove)
 
-    def run_func(self, fn, fn_out, *args, **kwargs):
+    def run_func(self, fn, fn_out, task, *args, **kwargs):
+        get_progress_overview().open_window() 
 
-        self.count_active_threads += 1
-        self.progressbar.setVisible(True)
-        self.progressbar.setTextVisible(True)
-
-        self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
-
-    def event_has_ended(self, thread_id):
-        self.count_active_threads -= 1
-        if self.count_active_threads <= 0:
-            self.count_active_threads = 0
-            self.progressbar.setVisible(False)
-            self.progressbar.setTextVisible(False)
-            self.progressbar.setValue(0)
+        self.threadhandler.run_event(fn, fn_out, task, *args, **kwargs)
 
     def open_dir(self):
         dialog = QFileDialog()
@@ -93,22 +74,24 @@ class GenerateExtractedDataPDF(QWidget):
             self.convert_button.setDisabled(False)
 
 
-    def run_convert(self, checked, progress_callback=None, thread_id=0, **kwargs):
+    def run_convert(self, checked, progress_callback=None, thread_id="", **kwargs):
         self.convert_button.setDisabled(True)
 
-        def update_progressbar(percentage):
+        def update_progressbar(percentage, msg):
             if progress_callback:
-                progress_callback.emit(percentage)
+                progress_callback.emit((thread_id, percentage, msg))
 
         builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
-        context = builder.run(builder.handler, self.file_path[:], progress_callback=update_progressbar)
+        context = builder.run(builder.handler, self.file_path[:], progress_callback=update_progressbar, file_index=0)
 
         if context is not None:
             FileHandler().draw_contextdata_on_pdf(context, self.file_path[0], self.name_file_to.text())
             context = None
             gc.collect()
 
+        return "Done generating pdf!"
 
     def convert_output(self, data):
         self.label.setText(f"File chosen:")
+        ErrorHub.error_msg(data, "information")
 

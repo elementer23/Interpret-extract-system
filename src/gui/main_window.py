@@ -11,8 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QFileDialog,
     QCheckBox,
-    QMessageBox,
-    QProgressBar
+    QMessageBox
     )
 from handler.main_handler import Handler
 from handler.file_handler import FileHandler, FileOsHandler
@@ -27,6 +26,9 @@ from gui.widgets.window_showplotwidget import PlotWindow
 from gui.events.thread_handler import ThreadHandler
 from core.interpreter import Interpreter
 from error.error_hub import ErrorHub
+from core.file_lock_manager import FileLockManager
+from gui.widgets.window_progressoverview_widget import get_progress_overview
+import copy
 import gc
 
 class MainWindow(QMainWindow):
@@ -35,7 +37,6 @@ class MainWindow(QMainWindow):
         self.lock = QMutex()
         self.active_files = set()
         self.windows = []
-        self.count_active_threads = 0
         self.setWindowTitle("interpret & extract")
 
         self.setMinimumSize(QSize(650, 500))
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
         self.file_path = []
         self.selected_files_list = []
         self.file_widgets = {}
+        self.lockmanager = FileLockManager()
 
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)
@@ -63,7 +65,7 @@ class MainWindow(QMainWindow):
         self.decomp_button = QPushButton("add file(s)")
         self.decomp_button.setStatusTip("add files whether from compressed folders or loose instances.")
         self.decomp_button.setHidden(True)
-        self.decomp_button.clicked.connect(lambda checked: self.run_func(self.decomp, self.decomp_output, checked))
+        self.decomp_button.clicked.connect(lambda checked: self.run_func(self.decomp, self.decomp_output, "adding files", checked))
 
         self.update_list_button = QPushButton("update content")
         self.update_list_button.setStatusTip("update the content of the list to check for changes.")
@@ -72,7 +74,7 @@ class MainWindow(QMainWindow):
         self.detect_selected_button = QPushButton("detect selected")
         self.detect_selected_button.setStatusTip("Open the selected files as images with the bounding boxes of the symbols drawn in them.")
         self.detect_selected_button.setEnabled(False)
-        self.detect_selected_button.clicked.connect(lambda checked, sfl=self.selected_files_list: self.run_func(self.detect_symbols, self.show_plot_window, sfl))
+        self.detect_selected_button.clicked.connect(lambda checked, sfl=self.selected_files_list: self.run_func(self.detect_symbols, self.show_plot_window, "draw easyocr data", sfl))
 
         self.delete_selected_button = QPushButton("delete selected")
         self.delete_selected_button.setStatusTip("delete the files that are selected.")
@@ -82,12 +84,12 @@ class MainWindow(QMainWindow):
         self.export_selected_button = QPushButton("export selected")
         self.export_selected_button.setStatusTip("export the selected files in accordance with the chosen settings.")
         self.export_selected_button.setEnabled(False)
-        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.export_selected_files, None, sfl))
+        self.export_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.export_selected_files, None, f"exporting to: {Settings.retrieve_settings('chosen_export')}", sfl))
 
         self.open_selected_button = QPushButton("open selected")
         self.open_selected_button.setStatusTip("open the selected files as images with bounding boxes drawn in them.")
         self.open_selected_button.setEnabled(False)
-        self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.open_selected_files, self.show_plot_window, sfl))
+        self.open_selected_button.clicked.connect( lambda checked, sfl=self.selected_files_list: self.run_func(self.open_selected_files, self.show_plot_window, "draw tesseract coords", sfl))
 
         self.main_checkbox = QCheckBox()
         self.main_checkbox.stateChanged.connect( lambda checked: self.handle_checkbox_state(checked))
@@ -114,38 +116,22 @@ class MainWindow(QMainWindow):
 
         scroll_view.setWidget(content_widget)
         main_layout.addWidget(scroll_view)
-
-        self.progressbar = QProgressBar()
-        self.progressbar.setVisible(False)
-        self.progressbar.setTextVisible(False)
-
-        self.statusBar().addPermanentWidget(self.progressbar)
        
         main_widget.setLayout(main_layout)
 
         self.dir_content()
 
         self.threadhandler = ThreadHandler()
-        self.threadhandler.func_finished.connect(self.progressbar.setValue)
-        self.threadhandler.event_finished.connect(self.event_has_ended)
+        self.threadhandler.event_started.connect(get_progress_overview().add)
+        self.threadhandler.func_finished.connect(get_progress_overview().update_progress)
+        self.threadhandler.event_finished.connect(get_progress_overview().remove)
 
         ErrorHub.get().error_raised.connect(self._handle_error)
 
-    def run_func(self, fn, fn_out, *args, **kwargs):
+    def run_func(self, fn, fn_out, task, *args, **kwargs):
+        get_progress_overview().open_window() 
 
-        self.count_active_threads += 1
-        self.progressbar.setVisible(True)
-        self.progressbar.setTextVisible(True)
-
-        self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
-
-    def event_has_ended(self, thread_id):
-        self.count_active_threads -= 1
-        if self.count_active_threads <= 0:
-            self.count_active_threads = 0
-            self.progressbar.setVisible(False)
-            self.progressbar.setTextVisible(False)
-            self.progressbar.setValue(0)
+        self.threadhandler.run_event(fn, fn_out, task, *args, **kwargs)
 
     def _handle_error(self, message: str, error_type: str):
         match error_type:
@@ -170,14 +156,14 @@ class MainWindow(QMainWindow):
             self.file_path = dialog.selectedFiles()
             self.decomp_button.setHidden(False)
 
-    def decomp(self, checked, progress_callback=None, thread_id=0, **kwargs):
+    def decomp(self, checked, progress_callback=None, thread_id="", **kwargs):
 
         path = FileOsHandler().formulate_files_dir()
         target_path = os.path.join(path[0], path[1])
 
-        def update_progressbar(percentage):
+        def update_progressbar(percentage, msg):
             if progress_callback:
-                progress_callback.emit(percentage)
+                progress_callback.emit((thread_id, percentage, msg))
 
         cls = Decompress(directory=target_path, file_s=self.file_path, progress_callback=update_progressbar)
 
@@ -249,27 +235,27 @@ class MainWindow(QMainWindow):
     def show_plot_window(self, data):
         try:
             if data:
-                for f in data:
-                    plot_window = PlotWindow(f)
-                    self.windows.append(plot_window)
-                    plot_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+                plot_window = PlotWindow(data)
+                self.windows.append(plot_window)
+                plot_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
-                    plot_window.destroyed.connect(self.__make_cleanup_handler(plot_window))
-                    plot_window.show()
+                plot_window.destroyed.connect(self.__make_cleanup_handler(plot_window))
+                plot_window.show()
+                del data
+                gc.collect()
         except ValueError:
             pass
 
     def __make_cleanup_handler(self, window):
         return lambda: self.windows.remove(window) if window in self.windows else None
 
-    def open_selected_files(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
+    def open_selected_files(self, dic_list, progress_callback=None, thread_id="", **kwargs):
         dir_list = []
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
  
         for n in data:
             dir_list.append(n["dir"])
-            with QMutexLocker(self.lock):
-                self.active_files.add(n["dir"])
+            self.lockmanager.lock_file(n['dir'])
 
 
         amount_of_files = len(dir_list)
@@ -278,10 +264,10 @@ class MainWindow(QMainWindow):
             plot_data = []
 
             current_index = 1
-            def update_progressbar(sub_percentage):
+            def update_progressbar(sub_percentage, msg):
                     if progress_callback:
                         total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
-                        progress_callback.emit(total_percentage)
+                        progress_callback.emit((thread_id, total_percentage, msg))
 
             for i, directory in enumerate(dir_list):
                 current_index = i
@@ -297,20 +283,17 @@ class MainWindow(QMainWindow):
             return plot_data
 
         finally:
-            with QMutexLocker(self.lock):
-                for f in data:
-                    if f['dir'] in self.active_files:
-                        self.active_files.remove(f['dir'])
+            for f in data:
+                self.lockmanager.unlock_file(f['dir'])
         
-    def export_selected_files(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
+    def export_selected_files(self, dic_list, progress_callback=None, thread_id="", **kwargs):
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
         dir_list, file_list = [], []
         for n in data:
             dir_list.append(n["dir"])
             file_list.append(n["file"].split(".")[0])
 
-            with QMutexLocker(self.lock):
-                self.active_files.add(n["dir"])
+            self.lockmanager.lock_file(n['dir'])
 
         amount_of_files = len(dir_list)
         all_tesseract = []
@@ -321,10 +304,10 @@ class MainWindow(QMainWindow):
             builder = Handler.pipeline_builder(self, False, Handler.STANDARD_BUILD)
 
             current_index = 1
-            def update_progressbar(sub_percentage):
+            def update_progressbar(sub_percentage, msg):
                     if progress_callback:
                         total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
-                        progress_callback.emit(total_percentage)
+                        progress_callback.emit((thread_id, total_percentage, msg))
             
             for i, directory in enumerate(dir_list):
                 current_index = i
@@ -332,13 +315,15 @@ class MainWindow(QMainWindow):
 
                 if context is not None:
 
-                    all_raw_data.append(context.combo_data[0])
+                    all_raw_data.append(copy.deepcopy(context.combo_data[0]))
 
                     interpreter = Interpreter(context.combo_data).fetch()
                     TextHandler().read_tesseract(context=context)
-                    all_tesseract.append(context.text_boxes[0])
-                    all_interpreted.append(interpreter[0] if interpreter else [])
+                    all_tesseract.append(copy.deepcopy(context.text_boxes[0]))
+                    all_interpreted.append(copy.deepcopy(interpreter[0]) if interpreter else [])
 
+                    if hasattr(context, 'image_s'):
+                        context.image_s.clear()
                     interpreter = None
                     context = None
                     gc.collect()
@@ -357,20 +342,17 @@ class MainWindow(QMainWindow):
             return f"{file_list} has or have been successfully exported."
 
         finally:
-            with QMutexLocker(self.lock):
-                for f in data:
-                    if f["dir"] in self.active_files:
-                        self.active_files.remove(f["dir"])
+            for f in data:
+                self.lockmanager.unlock_file(f['dir'])    
 
-    def detect_symbols(self, dic_list, progress_callback=None, thread_id=0, **kwargs):
+    def detect_symbols(self, dic_list, progress_callback=None, thread_id="", **kwargs):
         data = dic_list[0][0] if isinstance(dic_list, tuple) else dic_list
         dir_list, file_list = [], []
         for n in data:
             dir_list.append(n["dir"])
             file_list.append(n["file"].split(".")[0])
 
-            with QMutexLocker(self.lock):
-                self.active_files.add(n["dir"])
+            self.lockmanager.lock_file(n['dir'])
 
         amount_of_files = len(dir_list)
 
@@ -379,10 +361,10 @@ class MainWindow(QMainWindow):
             plot_data = []
 
             current_index = 1
-            def update_progressbar(sub_percentage):
+            def update_progressbar(sub_percentage, msg):
                     if progress_callback:
                         total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
-                        progress_callback.emit(total_percentage)
+                        progress_callback.emit((thread_id, total_percentage, msg))
 
             for i, directory in enumerate(dir_list):
                 current_index = i
@@ -397,10 +379,8 @@ class MainWindow(QMainWindow):
             return plot_data
         
         finally:
-            with QMutexLocker(self.lock):
-                for f in data:
-                    if f["dir"] in self.active_files:
-                        self.active_files.remove(f["dir"])
+            for f in data:
+                self.lockmanager.unlock_file(f['dir'])
 
     def retrieve_widget_layout_in_scroll_view(self, label_name: str):
         """A function that retrieves the correct widget item in the layout, depending on the label name."""
@@ -447,11 +427,10 @@ class MainWindow(QMainWindow):
         for n in dic_list:
             dir_list.append(n["dir"])
             file_list.append(n["file"])
-            with QMutexLocker(self.lock):
-                if n["dir"] in self.active_files:
-                    print(f"The file or files are still active and can't be deleted, files in question {file_list}")
-                    return
-
+            if self.lockmanager.is_file_locked(n['dir']):
+                print(f"The file or files are still active and can't be deleted, files in question {file_list}")
+                return
+            
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Warning")
         dlg.setText("Are you sure, you want to remove the selected files?")

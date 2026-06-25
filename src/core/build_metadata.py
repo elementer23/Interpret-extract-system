@@ -4,6 +4,12 @@ import pymupdf
 from datetime import datetime
 
 class MetaDataCreator():
+    """
+    The MetaDataCreator class, requires a list of pdf file paths or a singular pdf file path.
+    Extracts basic metadata from the pdf and interprets height and width from the given pdf's.
+    
+    Will save the data inside of a MetaDataBundle instance object.
+    """
     def __init__(self, original_filepath: str | list[str]):
         self.original_filepath = original_filepath
 

@@ -4,7 +4,7 @@ class WorkerSignals(QObject):
     """Signals from a running worker thread.
 
     finished
-        int thread_id
+        str thread_id
 
     error
         tuple (exctype, value, traceback.format_exc())
@@ -16,7 +16,7 @@ class WorkerSignals(QObject):
         tuple (thread_id, progress_value)
     """
 
-    finished = pyqtSignal(int)  # thread_id
+    finished = pyqtSignal(str)  # thread_id
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
-    progress = pyqtSignal(int)  # (progress_percentage)
+    progress = pyqtSignal(tuple)  # (thread_id, progress_percentage)

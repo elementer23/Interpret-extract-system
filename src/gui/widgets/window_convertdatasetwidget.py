@@ -6,21 +6,16 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QFileDialog,
-    QHBoxLayout,
     QLineEdit,
     QGroupBox,
-    QFormLayout,
-    QProgressBar
+    QFormLayout
 )
 from utils.io import IO
 from gui.events.thread_handler import ThreadHandler
-from handler.file_handler import FileOsHandler
 from error.error_hub import ErrorHub
+from gui.widgets.window_progressoverview_widget import get_progress_overview
 
 class ConvertDatasetWindow(QWidget):
-    """
-    Isn't finished yet.
-    """
     def __init__(self):
         super().__init__()
 
@@ -30,11 +25,8 @@ class ConvertDatasetWindow(QWidget):
 
         main_layout = QVBoxLayout()
 
-        progress_layout = QHBoxLayout()
-
         self.files = ""
         self.directory = ""
-        self.count_active_threads = 0
 
         group_box = QGroupBox("Coco to Yolo conversion")
         form_layout = QFormLayout()
@@ -56,10 +48,6 @@ class ConvertDatasetWindow(QWidget):
         self.images_to_slice_button.setEnabled(False)
         self.images_to_slice_button.clicked.connect(self.open_images_to_slice_dir)
 
-        # self.sliced_images_dir_name_input = QLineEdit()
-        # self.sliced_images_dir_name_input.setText("tiled_dataset")
-        # self.sliced_images_dir_name_input.setEnabled(False)
-
         self.width_in_pix_input = QLineEdit()
         self.width_in_pix_input.setText("1500")
         self.width_in_pix_input.setEnabled(False)
@@ -74,47 +62,30 @@ class ConvertDatasetWindow(QWidget):
 
         self.activate_function_button = QPushButton("convert")
         self.activate_function_button.setEnabled(False)
-        self.activate_function_button.clicked.connect(lambda checked: self.run_func(self.run_convert, None, checked))
-
-        self.progressbar = QProgressBar()
-        self.progressbar.setVisible(False)
-        self.progressbar.setTextVisible(False)
+        self.activate_function_button.clicked.connect(lambda checked: self.run_func(self.run_convert, self.convert_output, "converting dataset", checked))
 
         form_layout.addRow(QLabel("Choose the corresponding result.json"), self.json_result_button)
         form_layout.addRow(QLabel("Name the file to enter the clean json in"), self.cleaned_json_input)
         form_layout.addRow(QLabel("Choose the corresponding directory with the images to be sliced"), self.images_to_slice_button)
-        # form_layout.addRow(QLabel("Name the directory where the sliced images should be saved"), self.sliced_images_dir_name_input)
         form_layout.addRow(QLabel("The minimum width of the images that should be excluded"), self.width_in_pix_input)
         form_layout.addRow(QLabel("The width that each slice should be"), self.slice_width_input)
         form_layout.addRow(QLabel("The height that each slice should be"), self.slice_height_input)
         form_layout.addRow(self.activate_function_button)
 
         group_box.setLayout(form_layout)
-        progress_layout.addWidget(self.progressbar)
         main_layout.addWidget(group_box)
-        main_layout.addLayout(progress_layout)
 
         self.setLayout(main_layout)
 
         self.threadhandler = ThreadHandler()
-        self.threadhandler.func_finished.connect(self.progressbar.setValue)
-        self.threadhandler.event_finished.connect(self.event_has_ended)
+        self.threadhandler.event_started.connect(get_progress_overview().add)
+        self.threadhandler.func_finished.connect(get_progress_overview().update_progress)
+        self.threadhandler.event_finished.connect(get_progress_overview().remove)
 
-    def run_func(self, fn, fn_out, *args, **kwargs):
+    def run_func(self, fn, fn_out, task, *args, **kwargs):
+        get_progress_overview().open_window() 
 
-        self.count_active_threads += 1
-        self.progressbar.setVisible(True)
-        self.progressbar.setTextVisible(True)
-
-        self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
-
-    def event_has_ended(self, thread_id):
-        self.count_active_threads -= 1
-        if self.count_active_threads <= 0:
-            self.count_active_threads = 0
-            self.progressbar.setVisible(False)
-            self.progressbar.setTextVisible(False)
-            self.progressbar.setValue(0)
+        self.threadhandler.run_event(fn, fn_out, task, *args, **kwargs)
 
     def open_json_coco_file(self):
         dialog = QFileDialog()
@@ -126,7 +97,6 @@ class ConvertDatasetWindow(QWidget):
             self.cleaned_json_input.setEnabled(True)
             self.images_to_slice_button.setEnabled(True)
             self.files = dialog.selectedFiles()
-
 
     def open_images_to_slice_dir(self):
         dialog = QFileDialog.getExistingDirectory(
@@ -144,26 +114,12 @@ class ConvertDatasetWindow(QWidget):
             self.slice_height_input.setEnabled(True)
             self.activate_function_button.setEnabled(True)
 
-
-    def test_run(self):
-        clean_json = self.cleaned_json_input.text()
-        width_in_pix = self.width_in_pix_input.text()
-        slice_width = self.slice_width_input.text()
-        slice_height = self.slice_height_input.text()
-
-        print(self.files)
-        print(self.directory)
-        print(clean_json)
-        print(int(width_in_pix))
-        print(int(slice_width))
-        print(int(slice_height))
-
-    def run_convert(self, checked, progress_callback=None, thread_id=0, **kwargs):
+    def run_convert(self, checked, progress_callback=None, thread_id="", **kwargs):
 
         try:
-            def update_progressbar(percentage):
+            def update_progressbar(percentage, msg):
                 if progress_callback:
-                    progress_callback.emit(percentage)
+                    progress_callback.emit((thread_id, percentage, msg))
 
             clean_json = self.cleaned_json_input.text()
             width_in_pix = self.width_in_pix_input.text()
@@ -171,7 +127,8 @@ class ConvertDatasetWindow(QWidget):
             slice_height = self.slice_height_input.text()
             io_convert = IO(progress_callback=update_progressbar)
             
-            io_convert.slice_sahi(self.files[0], clean_json, self.directory, None, int(width_in_pix), int(slice_width), int(slice_height))
+            io_convert.slice_sahi(self.files[0], clean_json, self.directory, int(width_in_pix), int(slice_width), int(slice_height))
+            io_convert = None
 
             return "converted dataset"
         except Exception as e:
@@ -191,6 +148,7 @@ class ConvertDatasetWindow(QWidget):
         self.slice_height_input.setText("640")
         self.slice_height_input.setEnabled(False)
         self.activate_function_button.setEnabled(False)
+        ErrorHub.error_msg(data, "information")
 
     def file_name_list(self, file_list):
         list = []

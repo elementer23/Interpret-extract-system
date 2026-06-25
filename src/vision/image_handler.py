@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from core.exporter import Exporter
 from utils.settings import PackageSettings
 from collections import defaultdict
+import gc
 
 MAX_KERNEL_LENGTH = 31
 
@@ -29,7 +30,7 @@ class ImageHandler():
         :param context: the PipeContext instance, that contains the data from the converted pdf's.
         """
         if context.progress_callback:
-            context.progress_callback(0)
+            context.progress_callback(0, "Loading images... %p%")
 
         amount_of_files = len(context.image_s)
 
@@ -45,7 +46,7 @@ class ImageHandler():
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
-                context.progress_callback(percentage)
+                context.progress_callback(percentage, "Converting images... %p%")
 
 
     def draw_bounding_box(self, pipeline_context):
@@ -62,6 +63,7 @@ class ImageHandler():
         pc = pipeline_context
 
         arr = []
+        print("busy drawing bounding boxes!")
 
         for i, row in enumerate(pc.text_boxes):
             image = pc.image_s[i].copy()
@@ -69,6 +71,9 @@ class ImageHandler():
                 cv.rectangle(image, (box.x, box.y), (box.x + box.w, box.y + box.h), (0, 0, 255), 2)
             
             arr.append(image)
+            image = None
+            gc.collect()
+        print("finished drawing bounding boxes! Window should open soon!")
         return arr
     
 
@@ -110,9 +115,10 @@ class ImageHandler():
             batch_per_file.append([(k, v) for k, v in it.items()])
 
         cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 500, 40
+        print("busy drawing detection boxes")
 
         for i, row in enumerate(pc.combo_data):
-            image = pc.image_s[i].copy()
+            image = pc.image_s[i]
   
             for box in row:
                 x, y, w, h = box.symbol_offset
@@ -131,33 +137,12 @@ class ImageHandler():
                 cv.putText(image, filtered_text, (int(text_x), int(text_y)), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv.LINE_AA)
 
             arr.append(image)
-            
+            image = None
+        print("finished drawing detection boxes! Window should open soon!")
+        del batch
+        del batch_per_file
+        gc.collect()
         return arr
-        
-    def pdf_to_image_PIL_show(self, file):
-        """A function to instantly convert and show a pdf, as an image. (unused).
-        
-        :type file: file path - string
-        :param file: the path to the file that has to be converted and shown.
-        """
-        doc = pymupdf.open(file)
-        for page in doc:
-            zoom = 3.5
-            mat = pymupdf.Matrix(zoom, zoom)
-            pix = page.get_pixmap(matrix=mat)
-            img = Image.frombytes("RGB", \
-                                [pix.width, pix.height], \
-                                pix.samples)
-            img = img.convert("L")
-            page_array = np.array(img)
-
-            cleaned_page_array = cv.adaptiveThreshold(page_array, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 27, 20)
-            img = Image.fromarray(cleaned_page_array)
-
-            img.show()
-
-        doc.close()
-
 
 class ImageExportHandler():
     """ImageExportHandler class.

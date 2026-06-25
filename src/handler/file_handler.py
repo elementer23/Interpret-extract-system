@@ -24,7 +24,7 @@ class FileHandler():
         """
 
         if context.progress_callback:
-            context.progress_callback(0)
+            context.progress_callback(0, "Loading files... %p%")
 
         amount_of_files = len(context.image_s)
 
@@ -48,7 +48,7 @@ class FileHandler():
                 if context.progress_callback:
                     current_file = i + 1
                     percentage = int((current_file / amount_of_files) * 100)
-                    context.progress_callback(percentage)
+                    context.progress_callback(percentage, "Reshaping files... %p%")
             except Exception as ex:
                 print(ex)
                 ErrorHub.error_msg(f"Something went wrong during PDF processing: '{ex}'", "warning")
@@ -64,7 +64,7 @@ class FileHandler():
         :return list: a list of converted pdfs and natural images.
         """
         if progress_callback:
-            progress_callback(0)
+            progress_callback(0, "Loading files... %p%")
 
         amount_of_files = len(file_s)
         for i in range(amount_of_files):
@@ -89,7 +89,7 @@ class FileHandler():
                         if progress_callback:
                             current_file = i + 1
                             percentage = int((current_file / amount_of_files) * 100)
-                            progress_callback(percentage)
+                            progress_callback(percentage, "Reshaping files... %p%")
 
                         return np_buffer  
             except Exception as ex:      
@@ -144,39 +144,41 @@ class FileHandler():
         save_as = save_location / name
         save_as = FileOsHandler().get_unique_file(save_as, "pdf")
 
-        doc = pymupdf.open(filepath)
-        page = doc[0]
-
-        cv_image_width = pc.image_s[0].shape[1]
-        scale_factoring = page.rect.width / cv_image_width
-
         batch = self.__generate_detected_connections(pc.combo_data)
         batch_found = [(k, v) for k, v in batch.items()]
 
-        self.__generate_symbol_indications(page, scale_factoring, pc.combo_data)
+        try:
+            with pymupdf.open(filepath) as doc:
+                page = doc[0]
 
-        cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 200, 20
+                cv_image_width = pc.image_s[0].shape[1]
+                scale_factoring = page.rect.width / cv_image_width
 
-        total_items = len(batch_found)
-        if total_items > 0:
-            num_rows = ((total_items - 1) // cols) + 1
-            grid_width = cols * gap_x
-            grid_height = num_rows * gap_y
-            background_rect = pymupdf.Rect(start_x - 10, start_y - 15, start_x + grid_width + 10, start_y + grid_height + 20)
-            page.draw_rect(background_rect, color=(0, 0, 0), fill=(1, 1, 1), fill_opacity=0.9, width=1)
+                self.__generate_symbol_indications(page, scale_factoring, pc.combo_data)
 
-            for index, item in enumerate(batch_found):
-                symbol_id, text_list = item
-                filtered_text = f"{symbol_id}: {', '.join(text_list)}"
-                row = index // cols
-                col = index % cols
-                item_x = start_x + (col * gap_x)
-                item_y = start_y + (row * gap_y)
+                cols, start_x, start_y, gap_x, gap_y = 4, 40, 60, 200, 20
 
-                page.insert_text(pymupdf.Point(item_x, item_y), filtered_text, fontsize=11, color=(1, 0, 0))
+                total_items = len(batch_found)
+                if total_items > 0:
+                    num_rows = ((total_items - 1) // cols) + 1
+                    grid_width = cols * gap_x
+                    grid_height = num_rows * gap_y
+                    background_rect = pymupdf.Rect(start_x - 10, start_y - 15, start_x + grid_width + 10, start_y + grid_height + 20)
+                    page.draw_rect(background_rect, color=(0, 0, 0), fill=(1, 1, 1), fill_opacity=0.9, width=1)
 
-        doc.save(save_as, garbage=4, deflate=True)
-        doc.close()
+                    for index, item in enumerate(batch_found):
+                        symbol_id, text_list = item
+                        filtered_text = f"{symbol_id}: {', '.join(text_list)}"
+                        row = index // cols
+                        col = index % cols
+                        item_x = start_x + (col * gap_x)
+                        item_y = start_y + (row * gap_y)
+
+                        page.insert_text(pymupdf.Point(item_x, item_y), filtered_text, fontsize=11, color=(1, 0, 0))
+
+                doc.save(save_as, garbage=4, deflate=True)
+        except Exception as ex:
+            print(ex)
     
     def image_to_pdf(self, image, name: str):
         """
@@ -346,7 +348,7 @@ class FileOsHandler():
         """This function retrieves the files from the given path and returns them as a list.
         
         :type target_path: string
-        :param target_path: the path toe the directory, to retrieve the files from.
+        :param target_path: the path to the directory, to retrieve the files from.
 
         :return list[str] | None: a list of files or None if there are no files in the list (directory).
         """

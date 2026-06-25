@@ -78,7 +78,7 @@ class Decompress():
         count = 0
 
         if self.progress_callback:
-            self.progress_callback(0)
+            self.progress_callback(0, "Checking files... %p%")
 
         try:
             for key, value in library.items():
@@ -96,7 +96,7 @@ class Decompress():
                                 FileOsHandler().copy_files(file_path, self.directory)
                 if self.progress_callback:
                     percentage = int((count / len(library)) * 100)
-                    self.progress_callback(percentage)
+                    self.progress_callback(percentage, "Adding files... %p%")
 
         except Exception as ex:
             print("Exception:", ex)

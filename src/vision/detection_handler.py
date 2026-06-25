@@ -7,6 +7,7 @@ import numpy as np
 from domain.domain import SymbolDetectionBox
 import cv2 as cv
 from models.models import Models
+import gc
 
 class DetectionHandler():
     """DetectionHandler class.
@@ -16,6 +17,7 @@ class DetectionHandler():
     """
     def __init__(self):
         super().__init__()
+        self.use_gpu_boolean = (DEVICE.type == "cuda")
         self.model = YOLO(Models().get()).to(DEVICE)
 
     def _tile_generator(self, file_to_predict, tile_size, overlap):
@@ -47,7 +49,7 @@ class DetectionHandler():
                 else: 
                     converted_tile = cv.cvtColor(tile, cv.COLOR_GRAY2BGR)
 
-                yield converted_tile, (x, y)
+                yield converted_tile.copy(), (x, y)
 
 
     def _predict_batch(self, tiles, offsets, relevant_list):
@@ -55,18 +57,19 @@ class DetectionHandler():
         This function predicts the symbols on a batch of tiles and
         retrieves the offset of each symbol, along with the confidence the ai-model had on that symbol.
         """
-        results = self.model.predict(tiles, imgsz=640, conf=0.15, batch=len(tiles), verbose=False, device="cpu")
+        results = self.model.predict(tiles, imgsz=640, conf=0.15, batch=len(tiles), verbose=False, device=DEVICE)
 
         for i, r in enumerate(results):
             if r.obb is not None:
                 x_off, y_off = offsets[i]
-                boxes = r.obb.xyxyxyxy.cpu().numpy()
-                confidences = r.obb.conf.cpu().numpy()
+                boxes = r.obb.xyxyxyxy.detach().to("cpu").numpy()
+                confidences = r.obb.conf.detach().to("cpu").numpy()
 
                 for box, conf in zip(boxes, confidences):
                     offset_box = box + np.array([x_off, y_off])
                     relevant_list.append((offset_box, conf))
 
+        del results
 
     def process(self, context):
         """The process function. Mainly used as one of the last handlers in a pipeline build.
@@ -92,16 +95,16 @@ class DetectionHandler():
         """
         tile_size = 640
         overlap = 100
-        cpu_batch_size = 4
+        cpu_batch_size = 16 if self.use_gpu_boolean else 4
 
         if context.progress_callback:
-            context.progress_callback(0)
+            context.progress_callback(0, "Preparing AI... %p%")
 
         amount_of_files = len(context.image_s)
         actual_file_number  = getattr(context, "current_file_index", 1)
 
         for count, detection_file in enumerate(context.image_s, start=1):
-            print(f"Working on file number: {actual_file_number }")
+            print(f"Working on file number: {actual_file_number}")
 
             file_to_predict = detection_file
 
@@ -157,19 +160,29 @@ class DetectionHandler():
 
                 print(f"Symbols detected: {len(merged_results)}")
 
+                del polygons
+                del tree
+                del visited
+
             print("Predicting done! Adding to list of coördinates.")
 
             if context.progress_callback:
                 percentage = int((count / amount_of_files) * 100)
-                context.progress_callback(percentage)
+                context.progress_callback(percentage, "Finishing prediction... %p%")
             
             context.yolo_data.append(merged_results)
 
+            del relevant
+            del merged_results
+            gc.collect()
     
     def __get_grid_position(self, coords, height, width):
         """
         determines the position of the symbol coordinates through a grid structure of 3x3.
         Has become obsolete for this class, but can still be used if necessary. 
+
+        Be sure to keep this functionality inside the code, just in case extra positions
+        need to be exported.
 
         Args:
             coords (numpy array): the coordinates of the symbols in polygon format  

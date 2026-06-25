@@ -2,7 +2,6 @@ import os
 import subprocess
 import time
 import requests
-from typing import Any
 from src.utils.config import Config
 import psutil
 from src.error.error_hub import ErrorHub

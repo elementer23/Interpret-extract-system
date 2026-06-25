@@ -1,5 +1,6 @@
 import sys
 import traceback
+import uuid
 
 from PyQt6.QtCore import QRunnable, pyqtSlot
 from gui.events.worker_signals import WorkerSignals
@@ -22,7 +23,7 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
-        self.thread_id = kwargs.get("thread_id", 0)
+        self.thread_id = kwargs.get("thread_id", str(uuid.uuid4()))
         self.cancelled = False
 
         self.kwargs["progress_callback"] = self.signals.progress

@@ -12,10 +12,8 @@ app_folder = pathlib.Path(f"{local_appdata}/interpret_extract_system")
 
 class IO():
     """
-    This class hasn't been fully realized yet.
-
     The IO class is mainly used to transfer a coco dataset from label studio,
-    to a normal yolov8 dataset. The functionalities are still static however, due to the complexity.
+    to a normal yolov8 dataset. The functionalities are very precise in their execution.
 
     It basically slices all the images that have been labeled, removes the images that have no label, 
     Uses the original json coco file where all the labels and images have been documented and creates
@@ -26,15 +24,17 @@ class IO():
     def __init__(self, progress_callback=None):
         self.progress_callback = progress_callback
 
-    def slice_sahi(self, json_to_change: str, cleaned_json_output: str, dir_images_to_slice: str, output_archive_name_of_sliced_images: str, width_in_pix: int = False,
+    def slice_sahi(self, json_to_change: str, cleaned_json_output: str, dir_images_to_slice: str, width_in_pix: int = False,
                    slicing_width: int = False, slicing_height: int = False):
         
         """
-        This function hasn't been fully realized yet.
+        This function is responsible for cutting up the images into tiles and inserting
+        the new positions of these tiles into a new json file. The same goes for the coordinates
+        of the labels, which now correspond to their respective tile.
         """
 
         if self.progress_callback:
-            self.progress_callback(0)
+            self.progress_callback(0, "Preparing dataset... %p%")
 
         FileOsHandler().create_dir(app_folder, 'dataset')
         dataset_folder = app_folder / 'dataset'
@@ -65,7 +65,7 @@ class IO():
 
         for i, img in enumerate(data['images']):
             # 1. Bestandsnaam opschonen
-            raw_name = img['file_name'].split('%5C')[-1].split('/')[-1]
+            raw_name = img['file_name'].split('%5C')[-1].split('/')[-1].split('\\')[-1]
             if '__' in raw_name:
                 original_name = raw_name.split('__')[-1]
             else:
@@ -99,10 +99,12 @@ class IO():
 
             if self.progress_callback:
                 percentage = int((i / image_amount) * 100)
-                self.progress_callback(percentage)
+                self.progress_callback(percentage, "Extracted data, ready to slice... %p%")
 
         # Update de data
         data['images'] = new_images
+        categories = [c['name'] for c in data['categories']]
+        self.__extract_categories(categories=categories)
         data['annotations'] = [a for a in data['annotations'] if a['image_id'] in valid_image_ids]
 
         with open(cleaned_json, 'w') as f:
@@ -128,10 +130,10 @@ class IO():
 
     def __coco_labeling(self, json_coco: str):
         """
-        This function hasn't been fully realized yet.
+        This function creates label files for each new sliced tile.
         """
         if self.progress_callback:
-            self.progress_callback(0)
+            self.progress_callback(0, "Readying Labels... %p%")
 
         dataset_folder = app_folder / 'dataset'
         tiled_json = dataset_folder / f'{json_coco}/tiled_annotations.json_coco.json'
@@ -168,7 +170,7 @@ class IO():
 
             if self.progress_callback:
                 percentage = int((i / amount_of_annotations) * 100)
-                self.progress_callback(percentage)
+                self.progress_callback(percentage, "Finished Labeling... %p%")
 
         print("Done! the labels should be in the 'labels' directory.")
 
@@ -176,11 +178,11 @@ class IO():
 
     def __coco_jpg_removal(self, dir_name: str):
         """
-        This function hasn't been fully realized yet.
+        This function removes all the tiles that are empty.
         """
 
         if self.progress_callback:
-            self.progress_callback(0)
+            self.progress_callback(0, "Optional jpg removal... %p%")
 
         dataset_folder = app_folder / 'dataset'
         image_dir = dataset_folder / f'{dir_name}/'
@@ -199,6 +201,26 @@ class IO():
             
             if self.progress_callback:
                 percentage = int((count / amount_image) * 100)
-                self.progress_callback(percentage)
+                self.progress_callback(percentage, "Images removed... %p%")
 
         print(f"Done! removed {count} empty images. Now you should have a clean dataset.")
+
+    
+    def __extract_categories(self, categories: list):
+        """
+        This function extracts the categories from the json
+        and places them into a new classes.txt. 
+        """
+        if not categories:
+            return 
+        
+        dataset_folder = app_folder / 'dataset'
+
+        try:
+        
+            with open(f"{dataset_folder}/classes.txt", 'w') as file:
+                for item in categories:
+                    file.write(item + "\n")
+        
+        except Exception as ex:
+            print(ex)

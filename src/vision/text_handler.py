@@ -7,6 +7,7 @@ from domain.domain import TextDetectionBox, RawData
 import numpy as np
 import cv2 as cv 
 import easyocr
+import gc
 
 class TextHandler():
     """TextHandler class.
@@ -35,7 +36,7 @@ class TextHandler():
         :param context: the PipeContext instance that is given to the Pipeline build. Contains the necessary information, to extract data from.
         """
         if context.progress_callback:
-            context.progress_callback(0)
+            context.progress_callback(0, "Starting easyOCR... %p%")
 
         amount_of_files = len(context.yolo_data)
 
@@ -48,7 +49,7 @@ class TextHandler():
             for box in yolo_box:
                 pts = box.offset_box[0].reshape((-1, 1, 2)).astype(np.int32)
                 x, y, w, h = cv.boundingRect(pts)
-                raw_crop = grayed_image[y:y+h, x:x+w]
+                raw_crop = grayed_image[y:y+h, x:x+w].copy()
                 
                 if raw_crop.size > 0:
                     results = self.reader.readtext(raw_crop, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-+±', paragraph=False, workers=0)
@@ -63,17 +64,20 @@ class TextHandler():
 
                             grid_pos = next(self.__get_grid_position(text_pts_global, current_image.shape[0], current_image.shape[1]))
                             safe_global_pts = text_pts_global.copy()
-                            
-                            text_pts = np.array(bbox).astype(np.int32).reshape((-1, 1, 2))
-                            # cv.polylines(raw_crop, [text_pts], True, (0, 255, 0), 2)
                             data.append(RawData(text, prob, box.symbol_id, safe_global_pts, (x, y, w, h), grid_pos))
-                            
+
+                    del results
+                    del raw_crop
+
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
-                context.progress_callback(percentage)
+                context.progress_callback(percentage, "Processing easyOCR data... %p%")
 
             context.combo_data.append(data)
+
+            del data
+            gc.collect()
 
     def __get_grid_position(self, coords, height, width):
         """
@@ -115,7 +119,7 @@ class TextHandler():
         """
 
         if context.progress_callback:
-            context.progress_callback(0)
+            context.progress_callback(0, "Loading Tesseract... %p%")
 
         amount_of_files = len(context.image_s)
 
@@ -157,7 +161,7 @@ class TextHandler():
             if context.progress_callback:
                 current_file = i + 1
                 percentage = int((current_file / amount_of_files) * 100)
-                context.progress_callback(percentage)
+                context.progress_callback(percentage, "Processing Tesseract info... %p%")
 
             # append all the data from each individual image, to an all encompassing list. Which is then returned at the end of Pipeline build.
             context.text_boxes.append(lis)

@@ -1,6 +1,9 @@
 from error.error_hub_signals import ErrorHubSignals
 
 class ErrorHub:
+    """
+    This class is used to give and pass error messages to. 
+    """
     _signals = ErrorHubSignals()
 
     @classmethod

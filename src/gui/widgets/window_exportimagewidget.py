@@ -10,9 +10,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QGroupBox,
     QFormLayout,
-    QCheckBox,
-    QProgressBar,
-    QHBoxLayout
+    QCheckBox
 )
 from handler.file_handler import FileHandler, FileOsHandler
 from vision.image_handler import ImageExportHandler
@@ -23,6 +21,7 @@ import os
 from gui.events.thread_handler import ThreadHandler
 from error.error_hub import ErrorHub
 from core.exporter import Exporter 
+from gui.widgets.window_progressoverview_widget import get_progress_overview
 
 class ExportImageWindow(QWidget):
     def __init__(self):
@@ -33,11 +32,8 @@ class ExportImageWindow(QWidget):
         self.setMaximumSize(QSize(700, 650))
 
         self.files = []
-        self.count_active_threads = 0
 
         main_layout = QVBoxLayout()
-
-        progress_layout = QHBoxLayout()
 
         group_box = QGroupBox("image settings")
         form_layout = QFormLayout()
@@ -58,7 +54,7 @@ class ExportImageWindow(QWidget):
         self.combobox_image_type.addItems([".png", ".webp", ".jpeg", ".jpg"])
 
         self.extra_options = QCheckBox("extra")
-        self.extra_options.stateChanged.connect( lambda checked: self.reveal_extra(checked=checked))
+        self.extra_options.stateChanged.connect(lambda checked: self.reveal_extra(checked=checked))
 
         self.export_type_label = QLabel("choose export type:")
         self.export_type_label.setHidden(True)
@@ -109,7 +105,7 @@ class ExportImageWindow(QWidget):
 
         self.convert_button = QPushButton("convert")
         self.convert_button.setEnabled(False)
-        self.convert_button.clicked.connect(lambda checked: self.run_func(self.convert, self.convert_output, checked))
+        self.convert_button.clicked.connect(lambda checked: self.run_func(self.convert, self.convert_output, "image export", checked))
 
         form_layout.addRow(QLabel("choose color type:"), self.combobox_color_type)
         form_layout.addRow(QLabel("Image type to convert to:"), self.combobox_image_type)
@@ -127,43 +123,27 @@ class ExportImageWindow(QWidget):
         file_form_layout.addRow(self.label, self.select_file_s)
         file_form_layout.addRow(self.convert_button)
 
-        self.progressbar = QProgressBar()
-        self.progressbar.setVisible(False)
-        self.progressbar.setTextVisible(False)
-
         group_box.setLayout(form_layout)
         directory_box.setLayout(directory_form_layout)
         extra_box.setLayout(extra_form_layout)
         file_box.setLayout(file_form_layout)
-        progress_layout.addWidget(self.progressbar)
 
         main_layout.addWidget(group_box)
         main_layout.addWidget(extra_box)
         main_layout.addWidget(directory_box)
         main_layout.addWidget(file_box)
-        main_layout.addLayout(progress_layout)
 
         self.setLayout(main_layout)
 
         self.threadhandler = ThreadHandler()
-        self.threadhandler.func_finished.connect(self.progressbar.setValue)
-        self.threadhandler.event_finished.connect(self.event_has_ended)
+        self.threadhandler.event_started.connect(get_progress_overview().add)
+        self.threadhandler.func_finished.connect(get_progress_overview().update_progress)
+        self.threadhandler.event_finished.connect(get_progress_overview().remove)
 
-    def run_func(self, fn, fn_out, *args, **kwargs):
+    def run_func(self, fn, fn_out, task, *args, **kwargs):
+        get_progress_overview().open_window() 
 
-        self.count_active_threads += 1
-        self.progressbar.setVisible(True)
-        self.progressbar.setTextVisible(True)
-
-        self.threadhandler.run_event(fn, fn_out, *args, **kwargs)
-
-    def event_has_ended(self, thread_id):
-        self.count_active_threads -= 1
-        if self.count_active_threads <= 0:
-            self.count_active_threads = 0
-            self.progressbar.setVisible(False)
-            self.progressbar.setTextVisible(False)
-            self.progressbar.setValue(0)
+        self.threadhandler.run_event(fn, fn_out, task, *args, **kwargs)
 
     def reveal_extra(self, checked):
         is_hidden = False if Qt.CheckState(checked) == Qt.CheckState.Checked else True
@@ -221,7 +201,7 @@ class ExportImageWindow(QWidget):
         if dialog:
             self.save_location_button.setText(dialog)
 
-    def convert(self, checked, progress_callback=None, thread_id=0, **kwargs):
+    def convert(self, checked, progress_callback=None, thread_id="", **kwargs):
 
         directory = Settings.retrieve_settings('directory_path') if self.save_location_button.text() == "default" else self.save_location_button.text()
 
@@ -242,9 +222,9 @@ class ExportImageWindow(QWidget):
         FileOsHandler().create_dir(convert_ops['save_location'], "temp_export")
         target_path = os.path.join(convert_ops['save_location'], "temp_export")
 
-        def update_progressbar(percentage):
+        def update_progressbar(percentage, msg):
             if progress_callback:
-                progress_callback.emit(percentage)
+                progress_callback.emit((thread_id, percentage, msg))
 
         cls = Decompress(directory=target_path, file_s=self.files, progress_callback=update_progressbar)
 
@@ -260,10 +240,10 @@ class ExportImageWindow(QWidget):
         amount_of_files = len(compatible_files)
         
         current_index = 0
-        def update_sub_progressbar(sub_percentage):
+        def update_sub_progressbar(sub_percentage, msg):
             if progress_callback:
                 total_percentage = int(((current_index + (sub_percentage / 100)) / amount_of_files) * 100)
-                progress_callback.emit(total_percentage)
+                progress_callback.emit((thread_id, total_percentage, msg))
 
         for i, file in enumerate(compatible_files):
             current_index = i 
@@ -277,14 +257,17 @@ class ExportImageWindow(QWidget):
             c_file = None 
 
         if progress_callback: 
-            progress_callback.emit(90)
+            progress_callback.emit((thread_id, 80, "Finishing conversion... %p%"))
+
+        if progress_callback: 
+            progress_callback.emit((thread_id, 90, "Readying export... %p%"))
 
         Exporter().execute_package_export(convert_ops['save_location'], convert_ops['archive_name'], PackageSettings.manage_package(convert_ops['export_type']))
 
         FileOsHandler().remove_dir(target_path)
 
         if progress_callback: 
-            progress_callback.emit(100)
+            progress_callback.emit((thread_id, 100, "Finished exporting... %p%"))
         
         return "managed to successfully convert."
 
